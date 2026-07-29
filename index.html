@@ -1,4 +1,5 @@
 <!doctype html>
+<!-- Build: 2026-07-29-keihan-hotels-weather-v7 -->
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
@@ -277,8 +278,8 @@ img {
 
 .countdown-pill {
   position: absolute;
+  top: 20px;
   right: 22px;
-  bottom: 20px;
   padding: 9px 13px;
   border-radius: 999px;
   background: #fff;
@@ -470,6 +471,22 @@ img {
   margin-top: 4px;
   color: var(--ink-soft);
   font-size: 10px;
+}
+
+.weather-card {
+  color: var(--ink);
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.weather-card:active {
+  transform: scale(0.98);
+}
+
+.weather-card:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
 }
 
 .rate-card {
@@ -2959,7 +2976,8 @@ const DEFAULT_STATE = {
 };
 
 let state = loadState();
-let weather = { status: "loading", city: "京都", temperature: "--", label: "讀取中" };
+let weather = { status: "loading", city: "京都", temperature: "--", label: "正在取得位置" };
+let weatherRequestId = 0;
 let toastTimer;
 
 function clone(value) {
@@ -3161,11 +3179,11 @@ function renderHome() {
       </article>
 
       <div class="quick-grid">
-        <article class="mini-card weather-card">
+        <button type="button" class="mini-card weather-card" data-action="refresh-weather-location" aria-label="以目前位置更新即時天氣">
           <span>${icon("cloud")} ${weather.city}即時</span>
           <strong>${weather.temperature}${weather.temperature === "--" ? "" : "°"}</strong>
-          <small>${weather.label}</small>
-        </article>
+          <small>${weather.status === "loading" ? weather.label : `${weather.label} · 點擊更新`}</small>
+        </button>
         <button type="button" class="mini-card rate-card" data-action="open-currency-converter" aria-label="開啟日幣與台幣匯率換算">
           <span>${icon("trend")} 即時匯率</span>
           <strong>¥100</strong>
@@ -3206,8 +3224,8 @@ function renderHome() {
           </div>
         </div>
         <div class="hotel-list">
-          <a class="hotel-card" href="https://maps.app.goo.gl/fWEqTtPfL8V98g736?g_st=ic" target="_blank" rel="noreferrer">
-            <img class="hotel-thumb" src="hotel_stay/KYOTO202611_ST01" alt="OMO5京都三條 by 星野集團" loading="lazy" />
+          <a class="hotel-card" href="${mapUrl("OMO5京都三条 by 星野リゾート")}" target="_blank" rel="noreferrer">
+            <img class="hotel-thumb" src="hotel_stay/KYOTO202611_ST01.png" alt="OMO5京都三條 by 星野集團" loading="lazy" />
             <div>
               <small>11.21 — 11.23 · 京都</small>
               <strong>OMO5京都三條<br />by 星野集團</strong>
@@ -3215,8 +3233,8 @@ function renderHome() {
             </div>
             ${icon("arrow")}
           </a>
-          <a class="hotel-card" href="https://maps.app.goo.gl/zj6zNphYty87MFiW8?g_st=ic" target="_blank" rel="noreferrer">
-            <img class="hotel-thumb" src="hotel_stay/KYOTO202611_ST02" alt="大阪中心VOCO酒店 by IHG集團" loading="lazy" />
+          <a class="hotel-card" href="${mapUrl("voco大阪セントラル by IHG")}" target="_blank" rel="noreferrer">
+            <img class="hotel-thumb" src="hotel_stay/KYOTO202611_ST02.png" alt="大阪中心VOCO酒店 by IHG集團" loading="lazy" />
             <div>
               <small>11.23 — 11.25 · 大阪</small>
               <strong>大阪中心VOCO酒店<br />by IHG集團</strong>
@@ -3583,8 +3601,10 @@ function updateCurrencyConverter() {
   const rateNote = document.getElementById("currencyRateNote");
   if (!input || !result || !rateNote) return;
 
-  const jpy = Math.max(0, Number(input.value) || 0);
-  result.textContent = formatTwd(jpy * state.settings.jpyToTwd);
+  const rawValue = input.value.trim();
+  result.textContent = rawValue
+    ? formatTwd(Math.max(0, Number(rawValue) || 0) * state.settings.jpyToTwd)
+    : "—";
   rateNote.innerHTML = `${icon("trend")} 1 JPY ≈ NT$ ${state.settings.jpyToTwd.toFixed(
     4
   )} · ${escapeHtml(state.settings.rateUpdated)}`;
@@ -3603,13 +3623,13 @@ function openCurrencyConverter() {
           <span>日幣金額</span>
           <div class="currency-input-wrap">
             <span>¥</span>
-            <input id="currencyJpyInput" type="number" min="0" step="1" inputmode="decimal" value="1000" aria-label="日幣金額" />
+            <input id="currencyJpyInput" type="number" min="0" step="1" inputmode="decimal" placeholder="輸入日幣金額" aria-label="日幣金額" />
             <small>JPY</small>
           </div>
         </label>
         <div class="currency-result" aria-live="polite">
           <span>約合台幣</span>
-          <strong id="currencyTwdResult">${formatTwd(1000 * state.settings.jpyToTwd)}</strong>
+          <strong id="currencyTwdResult">—</strong>
         </div>
         <div id="currencyRateNote" class="currency-rate-note"></div>
       </div>
@@ -3617,7 +3637,7 @@ function openCurrencyConverter() {
     { label: "日幣台幣匯率換算" }
   );
   updateCurrencyConverter();
-  window.setTimeout(() => document.getElementById("currencyJpyInput")?.select(), 80);
+  window.setTimeout(() => document.getElementById("currencyJpyInput")?.focus(), 80);
   refreshRate(false);
 }
 
@@ -3933,17 +3953,65 @@ async function refreshRate(showFeedback = true) {
   }
 }
 
-async function refreshWeather() {
-  const status = tripStatus();
-  const useOsaka = status.phase === "during" && status.activeDay >= 3;
-  const place = useOsaka
-    ? { city: "大阪", latitude: 34.6937, longitude: 135.5023 }
-    : { city: "京都", latitude: 35.0116, longitude: 135.7681 };
+function getDevicePosition() {
+  return new Promise((resolve, reject) => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      reject(new Error("geolocation-unavailable"));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: false,
+      timeout: 9000,
+      maximumAge: 5 * 60 * 1000
+    });
+  });
+}
+
+function isTaiwanLocation(latitude, longitude) {
+  const mainIslandAndPenghu =
+    latitude >= 21.8 && latitude <= 25.6 && longitude >= 119.2 && longitude <= 122.2;
+  const kinmen =
+    latitude >= 24.3 && latitude <= 24.6 && longitude >= 118.1 && longitude <= 118.6;
+  const matsu =
+    latitude >= 25.85 && latitude <= 26.4 && longitude >= 119.8 && longitude <= 120.6;
+  return mainIslandAndPenghu || kinmen || matsu;
+}
+
+async function resolveWeatherPlace(showFeedback) {
+  const kyoto = { city: "京都", latitude: 35.0116, longitude: 135.7681 };
   try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}&current=temperature_2m,weather_code&timezone=Asia%2FTokyo`;
+    const position = await getDevicePosition();
+    const { latitude, longitude } = position.coords;
+    if (isTaiwanLocation(latitude, longitude)) {
+      if (showFeedback) showToast("目前位於台灣，改顯示京都天氣");
+      return kyoto;
+    }
+    if (showFeedback) showToast("已讀取目前位置的即時天氣");
+    return { city: "所在地", latitude, longitude };
+  } catch {
+    if (showFeedback) showToast("無法取得定位，改顯示京都天氣");
+    return kyoto;
+  }
+}
+
+async function refreshWeather(showFeedback = false) {
+  const requestId = ++weatherRequestId;
+  weather = {
+    status: "loading",
+    city: weather.city || "京都",
+    temperature: "--",
+    label: "正在取得位置"
+  };
+  if (state.view === "home") render();
+
+  const place = await resolveWeatherPlace(showFeedback);
+  if (requestId !== weatherRequestId) return;
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}&current=temperature_2m,weather_code&timezone=auto`;
     const response = await fetch(url, { cache: "no-store" });
     if (!response.ok) throw new Error("weather");
     const data = await response.json();
+    if (requestId !== weatherRequestId) return;
     const labels = {
       0: "晴朗",
       1: "大致晴朗",
@@ -4021,6 +4089,7 @@ document.addEventListener("click", (event) => {
     },
     "open-settings": openSettings,
     "open-currency-converter": openCurrencyConverter,
+    "refresh-weather-location": () => refreshWeather(true),
     "close-modal": closeModal,
     "toggle-flight": () => {
       state.flightIndex = state.flightIndex === 0 ? 1 : 0;
@@ -4125,7 +4194,10 @@ document.addEventListener("keydown", (event) => {
 });
 
 document.addEventListener("visibilitychange", () => {
-  if (!document.hidden) refreshRate(false);
+  if (!document.hidden) {
+    refreshRate(false);
+    refreshWeather(false);
+  }
 });
 
 hydrateIcons();
