@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Build: 2026-07-29-keihan-hotels-weather-v7 -->
+<!-- Build: 2026-07-29-keihan-scroll-rate-overlap-v8 -->
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
@@ -42,7 +42,7 @@
 }
 
 html {
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
   -webkit-text-size-adjust: 100%;
 }
 
@@ -206,7 +206,7 @@ img {
   align-items: flex-start;
   flex-direction: column;
   justify-content: flex-end;
-  padding: 42px 24px 60px;
+  padding: 42px 24px 145px;
   color: #fff;
 }
 
@@ -299,7 +299,7 @@ img {
 .overlap-section {
   position: relative;
   z-index: 2;
-  margin-top: -5px;
+  margin-top: -98px;
 }
 
 .card,
@@ -490,8 +490,7 @@ img {
 }
 
 .rate-card {
-  background: var(--brown);
-  color: #fff;
+  color: var(--ink);
   transition:
     transform 0.18s ease,
     border-color 0.18s ease;
@@ -504,11 +503,6 @@ img {
 .rate-card:focus-visible {
   outline: 2px solid var(--gold);
   outline-offset: 3px;
-}
-
-.rate-card > span,
-.rate-card small {
-  color: rgba(255, 255, 255, 0.68);
 }
 
 .today-card {
@@ -2128,15 +2122,12 @@ img {
   color: var(--gold-deep);
 }
 
-.rate-card,
 .expense-summary article:first-child,
 .guide-hero {
   background: var(--brown);
   color: var(--ink);
 }
 
-.rate-card > span,
-.rate-card small,
 .expense-summary article:first-child span,
 .expense-summary article:first-child small {
   color: rgba(247, 239, 229, 0.7);
@@ -2354,7 +2345,11 @@ img {
   }
 
   .hero-content {
-    padding: 55px 42px 76px;
+    padding: 55px 42px 170px;
+  }
+
+  .overlap-section {
+    margin-top: -108px;
   }
 
   .section-stack,
@@ -3032,6 +3027,16 @@ function formatJpy(value) {
   return `¥ ${Math.round(Number(value) || 0).toLocaleString("ja-JP")}`;
 }
 
+function formatJpyPerTwd(value) {
+  const rate = Number(value);
+  return rate > 0
+    ? (1 / rate).toLocaleString("ja-JP", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      })
+    : "--";
+}
+
 function toTwd(expense) {
   if (expense.currency === "TWD") return Number(expense.amount) || 0;
   return (Number(expense.amount) || 0) * state.settings.jpyToTwd;
@@ -3088,8 +3093,7 @@ function tripStatus() {
   return { label: `DAY ${day} · 旅行進行中`, activeDay: day, phase: "during" };
 }
 
-function render({ resetScroll = false } = {}) {
-  const scrollPosition = resetScroll ? 0 : window.scrollY;
+function render() {
   document.body.dataset.view = state.view;
   document.querySelectorAll(".nav-item").forEach((button) => {
     button.classList.toggle("active", button.dataset.view === state.view);
@@ -3108,9 +3112,6 @@ function render({ resetScroll = false } = {}) {
     }
   }
   hydrateIcons(view);
-  window.requestAnimationFrame(() => {
-    window.scrollTo({ top: scrollPosition, left: 0, behavior: "auto" });
-  });
 }
 
 function renderHome() {
@@ -3186,8 +3187,8 @@ function renderHome() {
         </button>
         <button type="button" class="mini-card rate-card" data-action="open-currency-converter" aria-label="開啟日幣與台幣匯率換算">
           <span>${icon("trend")} 即時匯率</span>
-          <strong>¥100</strong>
-          <b>≈ ${formatTwd(state.settings.jpyToTwd * 100)}</b>
+          <strong>NT$ 1</strong>
+          <b>≈ ¥ ${formatJpyPerTwd(state.settings.jpyToTwd)}</b>
           <small>${escapeHtml(state.settings.rateUpdated)} · 點擊換算</small>
         </button>
       </div>
@@ -4052,7 +4053,7 @@ document.addEventListener("click", (event) => {
   if (target.dataset.view) {
     state.view = target.dataset.view;
     saveState();
-    render({ resetScroll: true });
+    render();
     return;
   }
 
@@ -4085,7 +4086,7 @@ document.addEventListener("click", (event) => {
     "go-home": () => {
       state.view = "home";
       saveState();
-      render({ resetScroll: true });
+      render();
     },
     "open-settings": openSettings,
     "open-currency-converter": openCurrencyConverter,
