@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Build: 2026-07-29-keihan-instagram-references-v17 -->
+<!-- Build: 2026-07-29-keihan-instagram-feed-clean-v18 -->
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
@@ -1578,137 +1578,38 @@ img {
   line-height: 1.5;
 }
 
-.references-guide {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 0 14px 16px;
-  padding: 14px 15px;
-  border: 1px solid rgba(197, 160, 101, 0.26);
-  border-radius: 18px;
-  background:
-    linear-gradient(135deg, rgba(197, 160, 101, 0.13), rgba(197, 160, 101, 0.03)),
-    var(--card);
-}
-
-.references-guide > .ui-icon {
-  color: var(--gold-deep);
-  font-size: 27px;
-}
-
-.references-guide strong,
-.references-guide span {
-  display: block;
-}
-
-.references-guide strong {
-  font-size: 12px;
-}
-
-.references-guide span {
-  margin-top: 3px;
-  color: var(--ink-soft);
-  font-size: 9px;
-  line-height: 1.45;
-}
-
 .references-feed {
   display: grid;
-  gap: 20px;
-  padding: 0 14px 24px;
+  gap: 14px;
+  padding: 0 0 24px;
 }
 
-.reference-card {
+.reference-item {
+  width: 100%;
   overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 25px;
-  background: var(--card);
-  box-shadow: var(--shadow);
-  scroll-margin-top: 14px;
+  background: transparent;
   scroll-snap-align: start;
 }
 
-.reference-card-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 17px 17px 14px;
-}
-
-.reference-card-header > div {
-  min-width: 0;
-}
-
-.reference-card-index {
-  flex: none;
-  color: var(--gold-deep);
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-}
-
-.reference-card-header h2 {
-  margin: 5px 0 0;
-  font-size: 18px;
-  line-height: 1.35;
-}
-
-.reference-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.reference-tags span {
-  padding: 5px 8px;
-  border-radius: 999px;
-  background: var(--gold-soft);
-  color: var(--gold-deep);
-  font-size: 8px;
-  font-weight: 800;
-}
-
 .reference-embed-shell {
-  position: relative;
   display: flex;
   min-height: 520px;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  border-top: 1px solid var(--line-soft);
-  border-bottom: 1px solid var(--line-soft);
-  background:
-    radial-gradient(circle at 50% 28%, rgba(197, 160, 101, 0.16), transparent 38%),
-    #0d0c0b;
+  border: 0;
+  background: transparent;
 }
 
 .reference-embed-placeholder {
-  display: flex;
-  align-items: center;
-  flex-direction: column;
-  justify-content: center;
-  gap: 10px;
-  padding: 30px;
-  color: var(--ink-soft);
-  text-align: center;
+  display: grid;
+  min-height: 520px;
+  place-items: center;
+  color: var(--gold-deep);
 }
 
 .reference-embed-placeholder .ui-icon {
-  color: var(--gold-deep);
-  font-size: 42px;
-}
-
-.reference-embed-placeholder strong {
-  color: var(--ink);
-  font-size: 12px;
-}
-
-.reference-embed-placeholder span {
-  max-width: 230px;
-  font-size: 9px;
-  line-height: 1.5;
+  font-size: 38px;
 }
 
 .reference-embed-shell .instagram-media {
@@ -1720,39 +1621,9 @@ img {
   border-radius: 0 !important;
 }
 
-.reference-card-footer {
-  display: grid;
-  gap: 12px;
-  padding: 15px 17px 17px;
-}
-
-.reference-card-footer p {
-  margin: 0;
-  color: var(--ink-soft);
-  font-size: 10px;
-  line-height: 1.6;
-}
-
-.reference-open-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  min-height: 45px;
-  border: 1px solid rgba(197, 160, 101, 0.34);
-  border-radius: 14px;
-  background: #f7efe5;
-  color: #241b16;
-  font-size: 10px;
-  font-weight: 850;
-}
-
-.reference-open-button .ui-icon {
-  font-size: 18px;
-}
-
 @media (max-width: 390px) {
-  .reference-embed-shell {
+  .reference-embed-shell,
+  .reference-embed-placeholder {
     min-height: 500px;
   }
 }
@@ -3153,7 +3024,7 @@ let instagramEmbedScriptPromise;
 let dayCoverTimer;
 let toastTimer;
 let itineraryDaySummariesByDate = new Map();
-const BUILD_VERSION = "2026-07-29-keihan-instagram-references-v17";
+const BUILD_VERSION = "2026-07-29-keihan-instagram-feed-clean-v18";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -3950,7 +3821,6 @@ function renderReferences() {
     <section class="page-header">
       <span class="section-kicker">TRAVEL REFERENCES</span>
       <h1>行前參考</h1>
-      <p>把收藏的景點、美食與交通靈感集中在旅程開始之前。</p>
     </section>
   `;
 
@@ -3980,58 +3850,21 @@ function renderReferences() {
   return `
     ${header}
 
-    <article class="references-guide">
-      ${icon("references")}
-      <div>
-        <strong>上下滑動尋找旅行靈感</strong>
-        <span>影片由 Instagram 官方嵌入；若無法播放，可使用卡片下方按鈕開啟原始內容。</span>
-      </div>
-    </article>
-
     <section class="references-feed" aria-label="Instagram 行前參考影片">
       ${referenceFilms
         .map(
-          (film, index) => `
-            <article class="reference-card">
-              <header class="reference-card-header">
-                <div>
-                  ${
-                    film.category || film.destination
-                      ? `<div class="reference-tags">
-                          ${film.category ? `<span>${escapeHtml(film.category)}</span>` : ""}
-                          ${film.destination ? `<span>${escapeHtml(film.destination)}</span>` : ""}
-                        </div>`
-                      : ""
-                  }
-                  <h2>${escapeHtml(film.title)}</h2>
-                </div>
-                <span class="reference-card-index">#${String(index + 1).padStart(2, "0")}</span>
-              </header>
-
+          film => `
+            <article class="reference-item" aria-label="${escapeHtml(film.title)}">
               <div
                 class="reference-embed-shell"
                 data-reference-embed
                 data-reel-url="${escapeHtml(film.reelUrl)}"
                 aria-label="${escapeHtml(film.title)} Instagram 影片"
               >
-                <div class="reference-embed-placeholder">
+                <div class="reference-embed-placeholder" aria-hidden="true">
                   ${icon("references")}
-                  <strong>正在載入 Instagram 影片</strong>
-                  <span>公開 Reel 會透過 Instagram 官方播放器顯示。</span>
                 </div>
               </div>
-
-              <footer class="reference-card-footer">
-                ${film.note ? `<p>${escapeHtml(film.note)}</p>` : ""}
-                <a
-                  class="reference-open-button"
-                  href="${escapeHtml(film.reelUrl)}"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  ${icon("references")} 前往 Instagram 觀看 ${icon("arrow")}
-                </a>
-              </footer>
             </article>
           `
         )
