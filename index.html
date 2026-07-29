@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Build: 2026-07-29-keihan-supabase-connected-v11 -->
+<!-- Build: 2026-07-29-keihan-itinerary-note-sheet-v12 -->
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
@@ -885,6 +885,22 @@ img {
   box-shadow: var(--shadow-soft);
 }
 
+.timeline-content[data-action="open-itinerary-note"] {
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.timeline-content[data-action="open-itinerary-note"]:hover,
+.timeline-content[data-action="open-itinerary-note"]:focus-visible {
+  border-color: rgba(197, 160, 101, 0.68);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.2);
+  outline: none;
+  transform: translateY(-1px);
+}
+
 .timeline-photo {
   position: relative;
   display: grid;
@@ -1088,6 +1104,98 @@ img {
 .hours-source .ui-icon {
   width: 13px;
   height: 13px;
+}
+
+.itinerary-note-sheet {
+  background: #fff !important;
+  color: #171513;
+}
+
+.itinerary-note-sheet .sheet-handle {
+  background: #d7d1c9;
+}
+
+.itinerary-note-sheet .modal-close {
+  border-color: #e5dfd7;
+  background: #f5f2ed;
+  color: #171513;
+}
+
+.itinerary-note-sheet .modal-header h2 {
+  color: #171513;
+}
+
+.itinerary-note-sheet .modal-header p {
+  color: #746b63;
+}
+
+.itinerary-note-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.itinerary-note-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: #f3eee6;
+  color: #8d6a33;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.itinerary-note-meta .ui-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.itinerary-note-copy {
+  display: grid;
+  grid-template-columns: 27px 1fr;
+  gap: 11px;
+  margin: 20px 0;
+  padding: 17px;
+  border: 1px solid #e8e1d8;
+  border-radius: 18px;
+  background: #faf8f4;
+}
+
+.itinerary-note-copy > .ui-icon {
+  width: 23px;
+  height: 23px;
+  color: #a77a37;
+}
+
+.itinerary-note-copy p {
+  margin: 0;
+  color: #403a35;
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.itinerary-note-source {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  min-height: 50px;
+  margin-top: 6px;
+  padding: 13px 16px;
+  border-radius: 15px;
+  background: #171513;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.itinerary-note-source .ui-icon {
+  width: 18px;
+  height: 18px;
 }
 
 .primary-action {
@@ -2918,6 +3026,15 @@ function mapUrl(query) {
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(query)}`;
 }
 
+function safeHttpUrl(value) {
+  try {
+    const parsed = new URL(String(value || ""));
+    return parsed.protocol === "https:" || parsed.protocol === "http:" ? parsed.href : "";
+  } catch {
+    return "";
+  }
+}
+
 function dateInTaipei() {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Taipei",
@@ -3303,20 +3420,24 @@ function renderItinerary() {
                 <time>#${String(index + 1).padStart(2, "0")}</time>
                 <span></span>
               </div>
-              <div class="timeline-content">
-                <div class="timeline-photo">
-                  <div class="timeline-photo-placeholder">
-                    ${icon("camera")}
-                    <span>SUPABASE PHOTO</span>
-                  </div>
-                  ${
-                    item.image
-                      ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(
+              <div
+                class="timeline-content"
+                data-action="open-itinerary-note"
+                data-itinerary-day="${day.day}"
+                data-itinerary-index="${index}"
+                role="button"
+                tabindex="0"
+                aria-label="開啟${escapeHtml(item.title)}的旅行便利貼"
+              >
+                ${
+                  item.image
+                    ? `<div class="timeline-photo">
+                        <img src="${escapeHtml(item.image)}" alt="${escapeHtml(
                           item.imageAlt
-                        )}" loading="lazy" onerror="this.hidden=true" />`
-                      : ""
-                  }
-                </div>
+                        )}" loading="lazy" onerror="this.closest('.timeline-photo')?.remove()" />
+                      </div>`
+                    : ""
+                }
                 <span class="type-tag">${escapeHtml(item.type)}</span>
                 ${item.isOptional ? '<span class="optional-tag">彈性安排</span>' : ""}
                 <h3>${escapeHtml(item.title)}</h3>
@@ -3326,17 +3447,9 @@ function renderItinerary() {
                   <strong>${escapeHtml(item.timeLabel)}</strong>
                   <span>${escapeHtml(item.timeText)}</span>
                 </div>
-                <div class="item-note">${icon("info")}<span>${escapeHtml(item.note || "尚未加入備註")}</span></div>
                 <a class="map-button" href="${mapUrl(item.query || item.title)}" target="_blank" rel="noreferrer">
                   ${icon("map")} Google Maps 導航
                 </a>
-                ${
-                  item.hoursSource
-                    ? `<a class="hours-source" href="${escapeHtml(
-                        item.hoursSource
-                      )}" target="_blank" rel="noreferrer">官方時段來源 ${icon("arrow")}</a>`
-                    : ""
-                }
               </div>
             </article>`;
         })
@@ -3581,7 +3694,9 @@ function openModal(content, options = {}) {
   const root = document.getElementById("modalRoot");
   root.innerHTML = `
     <div class="modal-backdrop" data-action="close-modal">
-      <section class="modal-sheet ${options.size === "large" ? "large" : ""}" role="dialog" aria-modal="true" aria-label="${
+      <section class="modal-sheet ${options.size === "large" ? "large" : ""} ${escapeHtml(
+        options.className || ""
+      )}" role="dialog" aria-modal="true" aria-label="${
         escapeHtml(options.label || "視窗")
       }">
         <div class="sheet-handle" aria-hidden="true"></div>
@@ -3598,6 +3713,52 @@ function openModal(content, options = {}) {
 function closeModal() {
   document.getElementById("modalRoot").innerHTML = "";
   document.body.classList.remove("modal-open");
+}
+
+function openItineraryNote(dayNumber, itemIndex) {
+  const day = state.itinerary.find((entry) => entry.day === Number(dayNumber));
+  const item = day?.items?.[Number(itemIndex)];
+  if (!item) {
+    showToast("目前找不到這筆散策資料");
+    return;
+  }
+
+  const sourceUrl = safeHttpUrl(item.hoursSource);
+  const note = escapeHtml(item.note || "這個景點目前尚未加入旅行便利貼。").replaceAll(
+    "\n",
+    "<br />"
+  );
+
+  openModal(
+    `
+      <header class="modal-header">
+        <span class="section-kicker">TRAVEL NOTE</span>
+        <h2>旅行便利貼</h2>
+        <p>${escapeHtml(item.title)}</p>
+        <div class="itinerary-note-meta">
+          <span>${icon("clock")} ${escapeHtml(item.timeLabel)} ${escapeHtml(item.timeText)}</span>
+          <span>${escapeHtml(item.type)}</span>
+        </div>
+      </header>
+      <div class="itinerary-note-copy">
+        ${icon("info")}
+        <p>${note}</p>
+      </div>
+      ${
+        sourceUrl
+          ? `<a class="itinerary-note-source" href="${escapeHtml(
+              sourceUrl
+            )}" target="_blank" rel="noreferrer">
+              查看營業時間資料來源 ${icon("arrow")}
+            </a>`
+          : ""
+      }
+    `,
+    {
+      label: `${item.title}旅行便利貼`,
+      className: "itinerary-note-sheet"
+    }
+  );
 }
 
 function updateCurrencyConverter() {
@@ -3960,6 +4121,7 @@ async function refreshWeather(showFeedback = false) {
 document.addEventListener("click", (event) => {
   const target = event.target.closest("button, [data-view], [data-action], [data-day], [data-photo-filter], [data-expense-filter]");
   if (!target) return;
+  if (target.dataset.action === "open-itinerary-note" && event.target.closest("a")) return;
 
   if (target.dataset.view) {
     state.view = target.dataset.view;
@@ -4000,6 +4162,8 @@ document.addEventListener("click", (event) => {
       render();
     },
     "open-settings": openSettings,
+    "open-itinerary-note": () =>
+      openItineraryNote(target.dataset.itineraryDay, target.dataset.itineraryIndex),
     "open-currency-converter": openCurrencyConverter,
     "refresh-weather-location": () => refreshWeather(true),
     "close-modal": closeModal,
@@ -4076,6 +4240,15 @@ document.getElementById("importFile").addEventListener("change", (event) => {
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && document.body.classList.contains("modal-open")) closeModal();
+  const itineraryCard = event.target.closest?.('[data-action="open-itinerary-note"]');
+  if (
+    itineraryCard &&
+    !event.target.closest("a, button") &&
+    (event.key === "Enter" || event.key === " ")
+  ) {
+    event.preventDefault();
+    itineraryCard.click();
+  }
 });
 
 document.addEventListener("visibilitychange", () => {
