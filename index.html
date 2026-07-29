@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Build: 2026-07-29-keihan-itinerary-note-sheet-v12 -->
+<!-- Build: 2026-07-29-keihan-itinerary-spacing-tabs-v13 -->
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
@@ -832,7 +832,7 @@ img {
 }
 
 .timeline-list {
-  padding: 4px 14px 12px;
+  padding: 22px 14px 12px;
 }
 
 .timeline-card {
@@ -1078,6 +1078,7 @@ img {
   justify-content: center;
   gap: 6px;
   width: 100%;
+  margin-top: 16px;
   padding: 10px;
   border-radius: 12px;
   background: var(--ink);
@@ -1127,30 +1128,6 @@ img {
 
 .itinerary-note-sheet .modal-header p {
   color: #746b63;
-}
-
-.itinerary-note-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-  margin-top: 12px;
-}
-
-.itinerary-note-meta span {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 7px 10px;
-  border-radius: 999px;
-  background: #f3eee6;
-  color: #8d6a33;
-  font-size: 10px;
-  font-weight: 800;
-}
-
-.itinerary-note-meta .ui-icon {
-  width: 15px;
-  height: 15px;
 }
 
 .itinerary-note-copy {
@@ -3202,6 +3179,23 @@ function render() {
     }
   }
   hydrateIcons(view);
+  if (state.view === "itinerary") keepActiveDayTabVisible(view);
+}
+
+function keepActiveDayTabVisible(root) {
+  const tabs = root.querySelector(".day-tabs");
+  const activeTab = tabs?.querySelector("button.active");
+  if (!tabs || !activeTab) return;
+
+  window.requestAnimationFrame(() => {
+    const tabsRect = tabs.getBoundingClientRect();
+    const activeRect = activeTab.getBoundingClientRect();
+    const centeredLeft =
+      tabs.scrollLeft +
+      (activeRect.left - tabsRect.left) -
+      (tabs.clientWidth - activeRect.width) / 2;
+    tabs.scrollLeft = Math.max(0, centeredLeft);
+  });
 }
 
 function renderHome() {
@@ -3353,7 +3347,7 @@ function renderItinerary() {
     <section class="page-header">
       <span class="section-kicker">ITINERARY</span>
       <h1>旅行散策</h1>
-      <p>不綁定集合時間，依各地營業時段、天氣與家人體力彈性散策。</p>
+      <p>輕鬆自由行，視情況彈性調整行程。</p>
     </section>
   `;
 
@@ -3735,10 +3729,6 @@ function openItineraryNote(dayNumber, itemIndex) {
         <span class="section-kicker">TRAVEL NOTE</span>
         <h2>旅行便利貼</h2>
         <p>${escapeHtml(item.title)}</p>
-        <div class="itinerary-note-meta">
-          <span>${icon("clock")} ${escapeHtml(item.timeLabel)} ${escapeHtml(item.timeText)}</span>
-          <span>${escapeHtml(item.type)}</span>
-        </div>
       </header>
       <div class="itinerary-note-copy">
         ${icon("info")}
@@ -3749,7 +3739,7 @@ function openItineraryNote(dayNumber, itemIndex) {
           ? `<a class="itinerary-note-source" href="${escapeHtml(
               sourceUrl
             )}" target="_blank" rel="noreferrer">
-              查看營業時間資料來源 ${icon("arrow")}
+              官方網頁 ${icon("arrow")}
             </a>`
           : ""
       }
