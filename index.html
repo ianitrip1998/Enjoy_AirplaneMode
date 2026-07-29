@@ -3024,7 +3024,8 @@ function tripStatus() {
   return { label: `DAY ${day} · 旅行進行中`, activeDay: day, phase: "during" };
 }
 
-function render() {
+function render({ resetScroll = false } = {}) {
+  const scrollPosition = resetScroll ? 0 : window.scrollY;
   document.body.dataset.view = state.view;
   document.querySelectorAll(".nav-item").forEach((button) => {
     button.classList.toggle("active", button.dataset.view === state.view);
@@ -3036,7 +3037,9 @@ function render() {
   if (state.view === "expenses") view.innerHTML = renderExpenses();
   if (state.view === "photos") view.innerHTML = renderPhotos();
   hydrateIcons(view);
-  window.scrollTo({ top: 0, behavior: "instant" });
+  window.requestAnimationFrame(() => {
+    window.scrollTo({ top: scrollPosition, left: 0, behavior: "auto" });
+  });
 }
 
 function renderHome() {
@@ -3898,7 +3901,7 @@ document.addEventListener("click", (event) => {
   if (target.dataset.view) {
     state.view = target.dataset.view;
     saveState();
-    render();
+    render({ resetScroll: true });
     return;
   }
 
@@ -3931,7 +3934,7 @@ document.addEventListener("click", (event) => {
     "go-home": () => {
       state.view = "home";
       saveState();
-      render();
+      render({ resetScroll: true });
     },
     "open-settings": openSettings,
     "close-modal": closeModal,
