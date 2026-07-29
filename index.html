@@ -556,7 +556,7 @@ img {
 
 .hotel-card {
   display: grid;
-  grid-template-columns: 45px 1fr 22px;
+  grid-template-columns: 72px 1fr 22px;
   align-items: center;
   gap: 11px;
   min-height: 115px;
@@ -568,17 +568,13 @@ img {
   width: 18px;
 }
 
-.hotel-number {
-  display: grid;
-  width: 40px;
-  height: 52px;
-  place-items: center;
-  border-radius: 13px;
-  background: #f3ede3;
-  color: var(--gold-deep);
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 15px;
-  font-weight: 700;
+.hotel-thumb {
+  width: 70px;
+  height: 70px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--card-soft);
+  object-fit: cover;
 }
 
 .hotel-card > div:nth-child(2) {
@@ -2107,7 +2103,6 @@ img {
 }
 
 .date-chip,
-.hotel-number,
 .type-tag,
 .item-note,
 .expense-icon,
@@ -2401,6 +2396,18 @@ img {
     padding: 17px;
   }
 
+  .hotel-card {
+    grid-template-columns: 64px 1fr 20px;
+    gap: 9px;
+    padding: 13px;
+  }
+
+  .hotel-thumb {
+    width: 62px;
+    height: 62px;
+    border-radius: 14px;
+  }
+
   .page-header h1 {
     font-size: 34px;
   }
@@ -2463,7 +2470,7 @@ const ICONS = {
   receipt: "solar:bill-list-linear",
   camera: "solar:camera-linear",
   settings: "solar:settings-linear",
-  plane: "solar:airplane-linear",
+  plane: "mdi:airplane",
   pin: "solar:map-point-linear",
   clock: "solar:clock-circle-linear",
   hotel: "solar:buildings-2-linear",
@@ -2488,10 +2495,10 @@ const ICONS = {
 
 const HOME_DAY_SUMMARIES = [
   { day: 1, title: "神戶.京都.宇治", subtitle: "抵達神戶，從宇治走進京都" },
-  { day: 2, title: "京都.東山.嵐山", subtitle: "穿過東山古街，搭上嵯峨野列車" },
+  { day: 2, title: "京都.嵐山.龜岡", subtitle: "穿過嵐山，搭上嵯峨野列車" },
   { day: 3, title: "京都.大阪.天王寺", subtitle: "移動大阪，從天守閣看向城市夜景" },
   { day: 4, title: "箕面.難波.心齋橋", subtitle: "勝尾寺祈福，逛進大阪最熱鬧的夜" },
-  { day: 5, title: "大阪.關西機場.台北", subtitle: "從大阪返程，把一家人的回憶帶回家" }
+  { day: 5, title: "大阪.關西機場.台北", subtitle: "把京阪的楓葉收拾登機回台灣" }
 ];
 
 const DEFAULT_ITINERARY = [
@@ -3200,19 +3207,19 @@ function renderHome() {
         </div>
         <div class="hotel-list">
           <a class="hotel-card" href="https://maps.app.goo.gl/fWEqTtPfL8V98g736?g_st=ic" target="_blank" rel="noreferrer">
-            <div class="hotel-number">01</div>
+            <img class="hotel-thumb" src="hotel_stay/KYOTO202611_ST01" alt="OMO5京都三條 by 星野集團" loading="lazy" />
             <div>
               <small>11.21 — 11.23 · 京都</small>
-              <strong>OMO5 京都三條<br />by 星野集團</strong>
+              <strong>OMO5京都三條<br />by 星野集團</strong>
               <span>${icon("map")} Google Maps 導航</span>
             </div>
             ${icon("arrow")}
           </a>
           <a class="hotel-card" href="https://maps.app.goo.gl/zj6zNphYty87MFiW8?g_st=ic" target="_blank" rel="noreferrer">
-            <div class="hotel-number">02</div>
+            <img class="hotel-thumb" src="hotel_stay/KYOTO202611_ST02" alt="大阪中心VOCO酒店 by IHG集團" loading="lazy" />
             <div>
               <small>11.23 — 11.25 · 大阪</small>
-              <strong>voco 大阪中央</strong>
+              <strong>大阪中心VOCO酒店<br />by IHG集團</strong>
               <span>${icon("map")} Google Maps 導航</span>
             </div>
             ${icon("arrow")}
