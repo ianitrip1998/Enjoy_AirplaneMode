@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Build: 2026-07-29-keihan-itinerary-spacing-tabs-v13 -->
+<!-- Build: 2026-07-29-keihan-days-cover-copy-v15 -->
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
@@ -750,14 +750,29 @@ img {
 
 .day-cover img {
   position: absolute;
+  z-index: 1;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
+.day-cover-slide {
+  opacity: 0;
+  transform: scale(1.015);
+  transition:
+    opacity 0.9s ease,
+    transform 5.8s ease;
+}
+
+.day-cover-slide.active {
+  opacity: 1;
+  transform: scale(1);
+}
+
 .day-cover-placeholder {
   position: absolute;
+  z-index: 0;
   inset: 0;
   display: grid;
   place-items: center;
@@ -772,30 +787,64 @@ img {
   height: 36px;
 }
 
-.day-cover > div:last-child {
+.day-cover-shade {
+  z-index: 2;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(9, 9, 8, 0.08) 22%,
+      rgba(9, 9, 8, 0.3) 58%,
+      rgba(9, 9, 8, 0.9) 100%
+    );
+  pointer-events: none;
+}
+
+.day-cover-copy {
   position: absolute;
+  z-index: 3;
   right: 0;
   bottom: 0;
   left: 0;
-  padding: 23px;
+  display: block;
+  min-height: 118px;
+  padding: 22px 23px 24px;
+  color: #fff8ef;
+  pointer-events: none;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.58);
 }
 
-.day-cover span {
+.day-cover-date {
+  display: block;
+  color: #fff8ef;
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.08em;
 }
 
-.day-cover h2 {
+.day-cover-city {
+  display: block;
   margin: 5px 0 3px;
+  color: #fff8ef;
   font-family: Georgia, "Times New Roman", "Noto Serif TC", serif;
-  font-size: 31px;
+  font-size: clamp(27px, 7.8vw, 34px);
+  font-weight: 800;
+  line-height: 1.18;
 }
 
-.day-cover p {
+.day-cover-title {
+  display: block;
   margin: 0;
   color: rgba(255, 255, 255, 0.8);
   font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .day-cover-slide {
+    transition: none;
+    transform: none;
+  }
 }
 
 .reorder-tip {
@@ -2281,7 +2330,7 @@ img {
 }
 
 .hero-content,
-.day-cover > div:last-child {
+.day-cover-copy {
   color: var(--ink);
 }
 
@@ -2291,7 +2340,7 @@ img {
 }
 
 .hero p,
-.day-cover p {
+.day-cover-title {
   color: rgba(247, 239, 229, 0.78);
 }
 
@@ -2684,7 +2733,7 @@ const SUPABASE_ITINERARY = {
   url: "https://mkocodndbwgpvefhbizg.supabase.co",
   apiKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1rb2NvZG5kYndncHZlZmhiaXpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzMDY2OTYsImV4cCI6MjEwMDg4MjY5Nn0.Ha5MpBY0gDm9pMFfe1adV3Df1n5_H2WkH-j9n5hEemY",
   table: "KYOTO202611_Itinerary",
-  tripCode: "KYOTO202611",
+  daysTable: "KYOTO202611_Days",
   imageBucket: "kyoto202611-itinerary"
 };
 
@@ -2911,6 +2960,7 @@ let weather = { status: "loading", city: "京都", temperature: "--", label: "�
 let weatherRequestId = 0;
 let itineraryStatus = "loading";
 let itineraryError = "";
+let dayCoverTimer;
 let toastTimer;
 
 function clone(value) {
@@ -3046,7 +3096,9 @@ function isSupabaseItineraryConfigured() {
     SUPABASE_ITINERARY.url.startsWith("https://") &&
     !SUPABASE_ITINERARY.url.includes("YOUR_PROJECT_REF") &&
     SUPABASE_ITINERARY.apiKey &&
-    !SUPABASE_ITINERARY.apiKey.includes("YOUR_SUPABASE_PUBLISHABLE_OR_ANON_KEY")
+    !SUPABASE_ITINERARY.apiKey.includes("YOUR_SUPABASE_PUBLISHABLE_OR_ANON_KEY") &&
+    SUPABASE_ITINERARY.table &&
+    SUPABASE_ITINERARY.daysTable
   );
 }
 
@@ -3062,7 +3114,7 @@ function resolveItineraryImage(imagePath) {
   )}/${encodedPath}`;
 }
 
-function normalizeItineraryRows(rows) {
+function normalizeItineraryRows(dayRows, itemRows) {
   const timeLabels = {
     opening: "營業時間",
     recommended: "建議時段",
@@ -3070,49 +3122,55 @@ function normalizeItineraryRows(rows) {
     deadline: "期限／建議",
     reservation: "預約班次"
   };
-  const days = new Map();
+  const itemsByDate = new Map();
 
-  rows.forEach((row) => {
-    const dayNumber = Number(row.day_number);
-    if (!days.has(dayNumber)) {
-      days.set(dayNumber, {
-        day: dayNumber,
-        date: row.trip_date,
-        city: row.day_city,
-        title: row.day_title,
-        image: "",
-        items: []
-      });
-    }
-    const day = days.get(dayNumber);
-    day.items.push({
-      id: row.item_key,
-      sortOrder: Number(row.sort_order),
-      title: row.title,
-      type: row.category,
+  itemRows.forEach((row) => {
+    const tripDate = String(row.trip_date || "");
+    if (!tripDate) return;
+    if (!itemsByDate.has(tripDate)) itemsByDate.set(tripDate, []);
+
+    const title = row.title || "未命名景點";
+    itemsByDate.get(tripDate).push({
+      id: row.id,
+      sortOrder: Number.isFinite(Number(row.sort_order))
+        ? Number(row.sort_order)
+        : Number.MAX_SAFE_INTEGER,
+      title,
+      type: row.category || "行程",
       subtitle: row.subtitle || "",
       timeType: row.time_type,
       timeLabel: timeLabels[row.time_type] || "適合時段",
-      timeText: row.time_text,
+      timeText: row.time_text || "",
       note: row.note || "",
-      query: row.map_query || row.title,
+      query: row.map_query || title,
       image: resolveItineraryImage(row.image_path),
-      imageAlt: row.image_alt || `${row.title}的旅行照片`,
+      imageAlt: row.image_alt || `${title}的旅行照片`,
       hoursSource: row.hours_source_url || "",
       isOptional: Boolean(row.is_optional)
     });
   });
 
-  return [...days.values()]
-    .sort((a, b) => a.day - b.day)
-    .map((day) => {
-      day.items.sort((a, b) => a.sortOrder - b.sortOrder);
-      const cover =
-        day.items.find((item) => !["航班", "交通", "飯店"].includes(item.type) && item.image) ||
-        day.items.find((item) => item.image);
-      day.image = cover?.image || "";
-      return day;
-    });
+  return dayRows
+    .filter((row) => row.trip_date)
+    .map((row, index) => {
+      const date = String(row.trip_date);
+      const dayCity = String(row.day_city ?? row.dayCity ?? "").trim();
+      const dayTitle = String(row.day_title ?? row.dayTitle ?? "").trim();
+      const items = [...(itemsByDate.get(date) || [])].sort(
+        (a, b) => a.sortOrder - b.sortOrder
+      );
+      return {
+        day: Number(row.day_number) || index + 1,
+        date,
+        city: dayCity,
+        title: dayTitle,
+        images: items
+          .filter((item) => item.image)
+          .map((item) => ({ src: item.image, alt: item.imageAlt })),
+        items
+      };
+    })
+    .sort((a, b) => a.day - b.day);
 }
 
 async function loadItinerary() {
@@ -3128,32 +3186,56 @@ async function loadItinerary() {
   if (state.view === "itinerary") render();
 
   try {
-    const endpoint = new URL(
+    const itemEndpoint = new URL(
       `/rest/v1/${SUPABASE_ITINERARY.table}`,
       `${SUPABASE_ITINERARY.url}/`
     );
-    endpoint.searchParams.set("select", "*");
-    endpoint.searchParams.set("trip_code", `eq.${SUPABASE_ITINERARY.tripCode}`);
-    endpoint.searchParams.set("is_active", "eq.true");
-    endpoint.searchParams.set("order", "day_number.asc,sort_order.asc");
+    itemEndpoint.searchParams.set("select", "*");
+    itemEndpoint.searchParams.set("is_active", "eq.true");
+    itemEndpoint.searchParams.set("order", "trip_date.asc,sort_order.asc");
 
-    const response = await fetch(endpoint, {
+    const dayEndpoint = new URL(
+      `/rest/v1/${SUPABASE_ITINERARY.daysTable}`,
+      `${SUPABASE_ITINERARY.url}/`
+    );
+    dayEndpoint.searchParams.set(
+      "select",
+      "day_number,trip_date,day_city,day_title,is_active"
+    );
+    dayEndpoint.searchParams.set("is_active", "eq.true");
+    dayEndpoint.searchParams.set("order", "day_number.asc,trip_date.asc");
+
+    const requestOptions = {
       cache: "no-store",
       headers: {
-        apikey: SUPABASE_ITINERARY.apiKey
+        apikey: SUPABASE_ITINERARY.apiKey,
+        "Cache-Control": "no-cache",
+        Pragma: "no-cache"
       }
-    });
-    if (!response.ok) throw new Error(`Supabase ${response.status}`);
+    };
+    const [dayResponse, itemResponse] = await Promise.all([
+      fetch(dayEndpoint, requestOptions),
+      fetch(itemEndpoint, requestOptions)
+    ]);
+    if (!dayResponse.ok) throw new Error(`Supabase days ${dayResponse.status}`);
+    if (!itemResponse.ok) throw new Error(`Supabase itinerary ${itemResponse.status}`);
 
-    const rows = await response.json();
-    state.itinerary = normalizeItineraryRows(Array.isArray(rows) ? rows : []);
+    const [dayRows, itemRows] = await Promise.all([
+      dayResponse.json(),
+      itemResponse.json()
+    ]);
+    state.itinerary = normalizeItineraryRows(
+      Array.isArray(dayRows) ? dayRows : [],
+      Array.isArray(itemRows) ? itemRows : []
+    );
     if (!state.itinerary.some((day) => day.day === state.activeDay)) {
       state.activeDay = state.itinerary[0]?.day || 1;
     }
     itineraryStatus = state.itinerary.length ? "ready" : "empty";
   } catch (error) {
     itineraryStatus = "error";
-    itineraryError = "目前無法讀取旅行散策資料，請檢查資料表名稱、RLS 與 API 設定。";
+    itineraryError =
+      "目前無法讀取旅行散策資料，請檢查 Days、Itinerary 資料表名稱、RLS 與 API 設定。";
     console.error("Itinerary load failed", error);
   }
 
@@ -3161,6 +3243,7 @@ async function loadItinerary() {
 }
 
 function render() {
+  stopDayCoverCarousel();
   document.body.dataset.view = state.view;
   document.querySelectorAll(".nav-item").forEach((button) => {
     button.classList.toggle("active", button.dataset.view === state.view);
@@ -3179,7 +3262,32 @@ function render() {
     }
   }
   hydrateIcons(view);
-  if (state.view === "itinerary") keepActiveDayTabVisible(view);
+  if (state.view === "itinerary") {
+    keepActiveDayTabVisible(view);
+    startDayCoverCarousel(view);
+  }
+}
+
+function stopDayCoverCarousel() {
+  window.clearInterval(dayCoverTimer);
+  dayCoverTimer = undefined;
+}
+
+function startDayCoverCarousel(root) {
+  const getSlides = () => [...root.querySelectorAll("[data-day-cover-slide]")];
+  if (getSlides().length <= 1) return;
+
+  dayCoverTimer = window.setInterval(() => {
+    if (document.hidden) return;
+    const slides = getSlides();
+    if (slides.length <= 1) {
+      stopDayCoverCarousel();
+      return;
+    }
+    const currentIndex = slides.findIndex((slide) => slide.classList.contains("active"));
+    const nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % slides.length;
+    slides.forEach((slide, index) => slide.classList.toggle("active", index === nextIndex));
+  }, 5000);
 }
 
 function keepActiveDayTabVisible(root) {
@@ -3372,6 +3480,8 @@ function renderItinerary() {
   }
 
   const day = state.itinerary.find((item) => item.day === state.activeDay) || state.itinerary[0];
+  const coverCity = day.city || `DAY ${day.day}`;
+  const coverTitle = day.title || "今日旅行散策";
   return `
     ${header}
 
@@ -3389,18 +3499,28 @@ function renderItinerary() {
 
     <section class="day-cover">
       <div class="day-cover-placeholder">${icon("camera")}</div>
-      ${
-        day.image
-          ? `<img src="${escapeHtml(day.image)}" alt="${escapeHtml(
-              day.city
-            )}的旅行風景" onerror="this.hidden=true" />`
-          : ""
-      }
+      ${day.images
+        .map(
+          (photo, index) =>
+            `<img
+              class="day-cover-slide ${index === 0 ? "active" : ""}"
+              data-day-cover-slide
+              src="${escapeHtml(photo.src)}"
+              alt="${escapeHtml(photo.alt)}"
+              ${index === 0 ? "" : 'loading="lazy"'}
+              onerror="this.remove()"
+            />`
+        )
+        .join("")}
       <div class="day-cover-shade"></div>
-      <div>
-        <span>${formatTripDate(day.date)}</span>
-        <h2>${escapeHtml(day.city)}</h2>
-        <p>${escapeHtml(day.title)}</p>
+      <div
+        class="day-cover-copy"
+        data-day-city="${escapeHtml(coverCity)}"
+        data-day-title="${escapeHtml(coverTitle)}"
+      >
+        <span class="day-cover-date">${formatTripDate(day.date)}</span>
+        <h2 class="day-cover-city">${escapeHtml(coverCity)}</h2>
+        <p class="day-cover-title">${escapeHtml(coverTitle)}</p>
       </div>
     </section>
 
