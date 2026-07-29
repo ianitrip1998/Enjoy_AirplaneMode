@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Build: 2026-07-29-keihan-days-cover-copy-v15 -->
+<!-- Build: 2026-07-29-keihan-days-direct-date-map-v16 -->
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
@@ -2962,6 +2962,8 @@ let itineraryStatus = "loading";
 let itineraryError = "";
 let dayCoverTimer;
 let toastTimer;
+let itineraryDaySummariesByDate = new Map();
+const BUILD_VERSION = "2026-07-29-keihan-days-direct-date-map-v16";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -3183,6 +3185,7 @@ async function loadItinerary() {
 
   itineraryStatus = "loading";
   itineraryError = "";
+  itineraryDaySummariesByDate = new Map();
   if (state.view === "itinerary") render();
 
   try {
@@ -3224,8 +3227,20 @@ async function loadItinerary() {
       dayResponse.json(),
       itemResponse.json()
     ]);
+    const normalizedDayRows = Array.isArray(dayRows) ? dayRows : [];
+    itineraryDaySummariesByDate = new Map(
+      normalizedDayRows
+        .filter((row) => row.trip_date)
+        .map((row) => [
+          String(row.trip_date),
+          {
+            city: String(row.day_city ?? "").trim(),
+            title: String(row.day_title ?? "").trim()
+          }
+        ])
+    );
     state.itinerary = normalizeItineraryRows(
-      Array.isArray(dayRows) ? dayRows : [],
+      normalizedDayRows,
       Array.isArray(itemRows) ? itemRows : []
     );
     if (!state.itinerary.some((day) => day.day === state.activeDay)) {
@@ -3480,8 +3495,9 @@ function renderItinerary() {
   }
 
   const day = state.itinerary.find((item) => item.day === state.activeDay) || state.itinerary[0];
-  const coverCity = day.city || `DAY ${day.day}`;
-  const coverTitle = day.title || "今日旅行散策";
+  const directDaySummary = itineraryDaySummariesByDate.get(String(day.date));
+  const coverCity = directDaySummary?.city || day.city || `DAY ${day.day}`;
+  const coverTitle = directDaySummary?.title || day.title || "今日旅行散策";
   return `
     ${header}
 
@@ -3514,7 +3530,9 @@ function renderItinerary() {
         .join("")}
       <div class="day-cover-shade"></div>
       <div
-        class="day-cover-copy"
+        class="day-cover-copy day-cover-copy-v16"
+        data-summary-source="KYOTO202611_Days"
+        data-summary-trip-date="${escapeHtml(day.date)}"
         data-day-city="${escapeHtml(coverCity)}"
         data-day-title="${escapeHtml(coverTitle)}"
       >
@@ -4368,6 +4386,7 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 
+document.documentElement.dataset.buildVersion = BUILD_VERSION;
 hydrateIcons();
 render();
 loadItinerary();
