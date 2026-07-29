@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Build: 2026-07-29-keihan-hot-brand-bookmarks-v19 -->
+<!-- Build: 2026-07-30-keihan-bottom-nav-refresh-v20 -->
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#090908" />
     <meta
       name="description"
-      content="2026 京阪家族旅行專屬手冊：航班、飯店、行程、記帳、退稅提醒與拍照清單。"
+      content="2026 京阪家族旅行專屬手冊：航班、飯店、旅行散策、網上分享、品牌掃描與旅行記帳。"
     />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -136,7 +136,7 @@ img {
   bottom: 0;
   left: 0;
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   width: min(100%, 760px);
   height: calc(76px + var(--safe-bottom));
   margin: 0 auto;
@@ -156,7 +156,7 @@ img {
   border-radius: 16px;
   background: transparent;
   color: #8d8983;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
 }
 
@@ -2848,28 +2848,24 @@ img {
 
       <nav class="bottom-nav" aria-label="主要選單">
         <button class="nav-item active" data-view="home" aria-label="首頁">
-          <span class="icon-slot" data-icon="home"></span>
+          <span class="icon-slot" data-icon="navHome"></span>
           <span>首頁</span>
         </button>
         <button class="nav-item" data-view="itinerary" aria-label="旅行散策">
-          <span class="icon-slot" data-icon="calendar"></span>
-          <span>散策</span>
+          <span class="icon-slot" data-icon="navItinerary"></span>
+          <span>旅行散策</span>
         </button>
-        <button class="nav-item" data-view="references" aria-label="行前參考">
-          <span class="icon-slot" data-icon="references"></span>
-          <span>參考</span>
+        <button class="nav-item" data-view="references" aria-label="網上分享">
+          <span class="icon-slot" data-icon="navReferences"></span>
+          <span>網上分享</span>
         </button>
-        <button class="nav-item" data-view="brands" aria-label="找店書籤">
-          <span class="icon-slot" data-icon="store"></span>
-          <span>找店</span>
+        <button class="nav-item" data-view="brands" aria-label="品牌掃描">
+          <span class="icon-slot" data-icon="navBrands"></span>
+          <span>品牌掃描</span>
         </button>
-        <button class="nav-item" data-view="expenses" aria-label="記帳">
-          <span class="icon-slot" data-icon="receipt"></span>
-          <span>記帳</span>
-        </button>
-        <button class="nav-item" data-view="photos" aria-label="拍照地圖">
-          <span class="icon-slot" data-icon="camera"></span>
-          <span>Photo Map</span>
+        <button class="nav-item" data-view="expenses" aria-label="旅行記帳">
+          <span class="icon-slot" data-icon="navExpenses"></span>
+          <span>旅行記帳</span>
         </button>
       </nav>
     </div>
@@ -2901,6 +2897,11 @@ const ICONS = {
   store: "solar:shop-2-linear",
   receipt: "solar:bill-list-linear",
   camera: "solar:camera-linear",
+  navHome: "material-symbols:home-rounded",
+  navItinerary: "fa-solid:map-signs",
+  navReferences: "simple-icons:radarr",
+  navBrands: "mingcute:radar-2-fill",
+  navExpenses: "streamline-ultimate:cashless-payment-online-statement-monitor-bold",
   settings: "solar:settings-linear",
   plane: "mdi:airplane",
   pin: "solar:map-point-linear",
@@ -3101,12 +3102,10 @@ const PHOTO_SPOTS = [
 const DEFAULT_STATE = {
   view: "home",
   activeDay: 1,
-  photoFilter: "all",
   expenseFilter: "all",
   flightIndex: 0,
   itinerary: DEFAULT_ITINERARY,
   expenses: [],
-  completedSpots: {},
   settings: {
     budgetTwd: 50000,
     jpyToTwd: 0.216,
@@ -3130,7 +3129,7 @@ let instagramEmbedScriptPromise;
 let dayCoverTimer;
 let toastTimer;
 let itineraryDaySummariesByDate = new Map();
-const BUILD_VERSION = "2026-07-29-keihan-hot-brand-bookmarks-v19";
+const BUILD_VERSION = "2026-07-30-keihan-bottom-nav-refresh-v20";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -3140,13 +3139,14 @@ function loadState() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (!saved) return clone(DEFAULT_STATE);
+    const availableViews = new Set(["home", "itinerary", "references", "brands", "expenses"]);
     return {
       ...clone(DEFAULT_STATE),
       ...saved,
+      view: availableViews.has(saved.view) ? saved.view : "home",
       settings: { ...clone(DEFAULT_STATE.settings), ...(saved.settings || {}) },
       itinerary: [],
-      expenses: Array.isArray(saved.expenses) ? saved.expenses : [],
-      completedSpots: saved.completedSpots || {}
+      expenses: Array.isArray(saved.expenses) ? saved.expenses : []
     };
   } catch {
     return clone(DEFAULT_STATE);
@@ -3698,7 +3698,6 @@ function render() {
   if (state.view === "references") view.innerHTML = renderReferences();
   if (state.view === "brands") view.innerHTML = renderBrands();
   if (state.view === "expenses") view.innerHTML = renderExpenses();
-  if (state.view === "photos") view.innerHTML = renderPhotos();
   if (state.view === "home") {
     const heroImage = view.querySelector(".hero > img");
     if (heroImage) {
@@ -4313,73 +4312,6 @@ function renderExpenses() {
   `;
 }
 
-function renderPhotos() {
-  const filters = ["all", "1", "2", "3", "4"];
-  const spots =
-    state.photoFilter === "all"
-      ? PHOTO_SPOTS
-      : PHOTO_SPOTS.filter((spot) => String(spot.day) === state.photoFilter);
-  const completed = PHOTO_SPOTS.filter((spot) => state.completedSpots[spot.id]).length;
-  const percent = Math.round((completed / PHOTO_SPOTS.length) * 100);
-
-  return `
-    <section class="page-header photo-header">
-      <span class="section-kicker">PHOTO MAP</span>
-      <h1>拍照清單</h1>
-      <p>把每一站想拍的畫面先收好，完成後就打勾。</p>
-    </section>
-
-    <article class="photo-stats">
-      <div><strong>${PHOTO_SPOTS.length}</strong><span>全部景點</span></div>
-      <div><strong>${completed}</strong><span>已完成</span></div>
-      <div><strong>${PHOTO_SPOTS.length - completed}</strong><span>未完成</span></div>
-      <div class="progress-ring" style="--progress:${percent * 3.6}deg"><strong>${percent}%</strong><span>完成度</span></div>
-    </article>
-
-    <div class="filter-row photo-filters">
-      ${filters
-        .map(
-          (filter) => `
-            <button class="${state.photoFilter === filter ? "active" : ""}" data-photo-filter="${filter}">
-              ${filter === "all" ? "全部" : `DAY ${filter}`}
-            </button>`
-        )
-        .join("")}
-    </div>
-
-    <section class="photo-grid">
-      ${spots
-        .map(
-          (spot) => `
-            <article class="photo-card ${state.completedSpots[spot.id] ? "completed" : ""}">
-              <div class="photo-image">
-                <img src="${spot.image}" alt="${escapeHtml(spot.title)}" loading="lazy" />
-                <span>DAY ${spot.day}</span>
-                ${
-                  state.completedSpots[spot.id]
-                    ? `<div class="completed-badge">${icon("check")} 已完成</div>`
-                    : ""
-                }
-              </div>
-              <div class="photo-copy">
-                <small>${escapeHtml(spot.area)} · ${escapeHtml(spot.time)}</small>
-                <h2>${escapeHtml(spot.title)}</h2>
-                <p>${escapeHtml(spot.tip)}</p>
-                <div class="photo-actions">
-                  <a href="${mapUrl(spot.query)}" target="_blank" rel="noreferrer">${icon("map")} 導航</a>
-                  <button data-action="toggle-photo" data-id="${spot.id}">
-                    ${icon(state.completedSpots[spot.id] ? "close" : "check")}
-                    ${state.completedSpots[spot.id] ? "取消完成" : "標記完成"}
-                  </button>
-                </div>
-              </div>
-            </article>`
-        )
-        .join("")}
-    </section>
-  `;
-}
-
 function openModal(content, options = {}) {
   const root = document.getElementById("modalRoot");
   root.innerHTML = `
@@ -4584,7 +4516,7 @@ function openSettings() {
       <header class="modal-header">
         <span class="section-kicker">TRIP SETTINGS</span>
         <h2>旅行設定</h2>
-        <p>旅行散策由 Supabase 同步；記帳與拍照進度保留在這台裝置。</p>
+        <p>旅行散策由 Supabase 同步；記帳與個人設定保留在這台裝置。</p>
       </header>
       <div class="settings-list">
         <article>
@@ -4594,7 +4526,7 @@ function openSettings() {
           <button data-action="refresh-rate">更新</button>
         </article>
         <article>
-          <div>${icon("download")}<span><strong>匯出裝置資料</strong><small>記帳、拍照進度與個人設定</small></span></div>
+          <div>${icon("download")}<span><strong>匯出裝置資料</strong><small>記帳與個人設定</small></span></div>
           <button data-action="export-data">匯出</button>
         </article>
         <article>
@@ -4656,7 +4588,6 @@ function exportData() {
     version: 2,
     data: {
       expenses: state.expenses,
-      completedSpots: state.completedSpots,
       settings: state.settings
     }
   };
@@ -4674,9 +4605,8 @@ async function importData(file) {
   try {
     const payload = JSON.parse(await file.text());
     if (!payload?.data || typeof payload.data !== "object") throw new Error("invalid");
-    if (!window.confirm("匯入會覆蓋這台裝置目前的記帳、拍照進度與設定，確定繼續嗎？")) return;
+    if (!window.confirm("匯入會覆蓋這台裝置目前的記帳與設定，確定繼續嗎？")) return;
     state.expenses = Array.isArray(payload.data.expenses) ? payload.data.expenses : [];
-    state.completedSpots = payload.data.completedSpots || {};
     state.settings = { ...state.settings, ...(payload.data.settings || {}) };
     saveState();
     closeModal();
@@ -4805,7 +4735,7 @@ async function refreshWeather(showFeedback = false) {
 }
 
 document.addEventListener("click", (event) => {
-  const target = event.target.closest("button, [data-view], [data-action], [data-day], [data-photo-filter], [data-expense-filter]");
+  const target = event.target.closest("button, [data-view], [data-action], [data-day], [data-expense-filter]");
   if (!target) return;
   if (target.dataset.action === "open-itinerary-note" && event.target.closest("a")) return;
 
@@ -4818,13 +4748,6 @@ document.addEventListener("click", (event) => {
 
   if (target.dataset.day) {
     state.activeDay = Number(target.dataset.day);
-    saveState();
-    render();
-    return;
-  }
-
-  if (target.dataset.photoFilter) {
-    state.photoFilter = target.dataset.photoFilter;
     saveState();
     render();
     return;
@@ -4861,11 +4784,6 @@ document.addEventListener("click", (event) => {
     "show-tax-guide": openTaxGuide,
     "add-expense": openExpenseForm,
     "delete-expense": () => deleteExpense(target.dataset.id),
-    "toggle-photo": () => {
-      state.completedSpots[target.dataset.id] = !state.completedSpots[target.dataset.id];
-      saveState();
-      render();
-    },
     "edit-budget": () => {
       const value = window.prompt("請輸入家庭旅費預算（台幣）", String(state.settings.budgetTwd));
       if (!value || Number(value) <= 0) return;
@@ -4878,7 +4796,7 @@ document.addEventListener("click", (event) => {
     "import-data": () => document.getElementById("importFile").click(),
     "show-credits": openCredits,
     "reset-data": () => {
-      if (!window.confirm("確定要清除這台裝置的記帳、拍照進度與設定嗎？旅行散策資料不會受影響。")) return;
+      if (!window.confirm("確定要清除這台裝置的記帳與設定嗎？旅行散策資料不會受影響。")) return;
       state = clone(DEFAULT_STATE);
       saveState();
       closeModal();
