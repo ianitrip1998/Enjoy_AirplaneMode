@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Build: 2026-07-30-keihan-bottom-nav-refresh-v20 -->
+<!-- Build: 2026-07-30-keihan-bottom-nav-centered-v21 -->
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
@@ -148,21 +148,50 @@ img {
 }
 
 .nav-item {
+  position: relative;
   display: flex;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
   align-items: center;
   flex-direction: column;
   justify-content: center;
-  gap: 4px;
+  gap: 7px;
+  padding: 5px 2px 2px;
   border-radius: 16px;
   background: transparent;
   color: #8d8983;
   font-size: 10px;
   font-weight: 700;
+  line-height: 1;
+  text-align: center;
+}
+
+.nav-item .icon-slot {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  margin: 0 auto;
+  place-items: center;
+  line-height: 0;
 }
 
 .nav-item .ui-icon {
-  width: 23px;
-  height: 23px;
+  display: block;
+  width: 28px;
+  height: 28px;
+  margin: 0 auto;
+  font-size: 28px;
+}
+
+.nav-item > span:last-child {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .nav-item.active {
@@ -171,12 +200,15 @@ img {
 
 .nav-item.active::before {
   position: absolute;
+  top: 0;
+  left: 50%;
   width: 27px;
   height: 3px;
-  margin-top: -55px;
+  margin: 0;
   border-radius: 3px;
   background: var(--ink);
   content: "";
+  transform: translateX(-50%);
 }
 
 .hero {
@@ -2662,10 +2694,6 @@ img {
   vertical-align: middle;
 }
 
-.nav-item .ui-icon {
-  font-size: 26px;
-}
-
 .section-kicker .ui-icon,
 .mini-card > span .ui-icon,
 .text-button .ui-icon {
@@ -3129,7 +3157,7 @@ let instagramEmbedScriptPromise;
 let dayCoverTimer;
 let toastTimer;
 let itineraryDaySummariesByDate = new Map();
-const BUILD_VERSION = "2026-07-30-keihan-bottom-nav-refresh-v20";
+const BUILD_VERSION = "2026-07-30-keihan-bottom-nav-centered-v21";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
