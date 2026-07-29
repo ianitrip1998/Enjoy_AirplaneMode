@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Build: 2026-07-29-keihan-instagram-feed-clean-v18 -->
+<!-- Build: 2026-07-29-keihan-hot-brand-bookmarks-v19 -->
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
@@ -136,11 +136,11 @@ img {
   bottom: 0;
   left: 0;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   width: min(100%, 760px);
   height: calc(76px + var(--safe-bottom));
   margin: 0 auto;
-  padding: 8px 6px calc(8px + var(--safe-bottom));
+  padding: 8px 3px calc(8px + var(--safe-bottom));
   border-top: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 -8px 28px rgba(36, 30, 25, 0.08);
@@ -156,7 +156,7 @@ img {
   border-radius: 16px;
   background: transparent;
   color: #8d8983;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
 }
 
@@ -1621,10 +1621,106 @@ img {
   border-radius: 0 !important;
 }
 
+.brand-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 13px;
+  padding: 0 14px 28px;
+}
+
+.brand-card {
+  position: relative;
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 23px;
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease;
+}
+
+.brand-card:active {
+  transform: scale(0.98);
+}
+
+.brand-card-image {
+  position: relative;
+  display: grid;
+  aspect-ratio: 1 / 0.82;
+  overflow: hidden;
+  place-items: center;
+  background:
+    radial-gradient(circle at 25% 15%, rgba(197, 160, 101, 0.2), transparent 44%),
+    #151311;
+}
+
+.brand-card-image img {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.brand-card-placeholder {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--gold-deep);
+}
+
+.brand-card-placeholder .ui-icon {
+  font-size: 39px;
+}
+
+.brand-card-copy {
+  display: flex;
+  min-height: 68px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 13px 14px 14px;
+}
+
+.brand-card-copy h2 {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.brand-card-copy > .ui-icon {
+  color: var(--gold-deep);
+  font-size: 23px;
+}
+
 @media (max-width: 390px) {
   .reference-embed-shell,
   .reference-embed-placeholder {
     min-height: 500px;
+  }
+
+  .brand-grid {
+    gap: 10px;
+  }
+
+  .brand-card {
+    border-radius: 20px;
+  }
+
+  .brand-card-copy {
+    min-height: 62px;
+    padding: 11px 12px 13px;
+  }
+
+  .brand-card-copy h2 {
+    font-size: 12px;
   }
 }
 
@@ -2763,6 +2859,10 @@ img {
           <span class="icon-slot" data-icon="references"></span>
           <span>參考</span>
         </button>
+        <button class="nav-item" data-view="brands" aria-label="找店書籤">
+          <span class="icon-slot" data-icon="store"></span>
+          <span>找店</span>
+        </button>
         <button class="nav-item" data-view="expenses" aria-label="記帳">
           <span class="icon-slot" data-icon="receipt"></span>
           <span>記帳</span>
@@ -2789,13 +2889,16 @@ const SUPABASE_ITINERARY = {
   table: "KYOTO202611_Itinerary",
   daysTable: "KYOTO202611_Days",
   referencesTable: "References_film",
-  imageBucket: "kyoto202611-itinerary"
+  hotBrandTable: "Hot_brand",
+  imageBucket: "kyoto202611-itinerary",
+  hotBrandImageBucket: "hot-brand"
 };
 
 const ICONS = {
   home: "solar:home-2-linear",
   calendar: "solar:calendar-linear",
   references: "solar:play-circle-linear",
+  store: "solar:shop-2-linear",
   receipt: "solar:bill-list-linear",
   camera: "solar:camera-linear",
   settings: "solar:settings-linear",
@@ -3019,12 +3122,15 @@ let itineraryError = "";
 let referenceFilms = [];
 let referencesStatus = "loading";
 let referencesError = "";
+let hotBrands = [];
+let hotBrandsStatus = "loading";
+let hotBrandsError = "";
 let referenceEmbedObserver;
 let instagramEmbedScriptPromise;
 let dayCoverTimer;
 let toastTimer;
 let itineraryDaySummariesByDate = new Map();
-const BUILD_VERSION = "2026-07-29-keihan-instagram-feed-clean-v18";
+const BUILD_VERSION = "2026-07-29-keihan-hot-brand-bookmarks-v19";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -3116,6 +3222,10 @@ function mapUrl(query) {
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(query)}`;
 }
 
+function googleMapsSearchUrl(query) {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
 function safeHttpUrl(value) {
   try {
     const parsed = new URL(String(value || ""));
@@ -3173,6 +3283,15 @@ function isSupabaseReferencesConfigured() {
   );
 }
 
+function isSupabaseHotBrandConfigured() {
+  return (
+    SUPABASE_ITINERARY.url.startsWith("https://") &&
+    SUPABASE_ITINERARY.apiKey &&
+    SUPABASE_ITINERARY.hotBrandTable &&
+    SUPABASE_ITINERARY.hotBrandImageBucket
+  );
+}
+
 function resolveItineraryImage(imagePath) {
   if (!imagePath) return "";
   if (/^https?:\/\//i.test(imagePath)) return imagePath;
@@ -3182,6 +3301,18 @@ function resolveItineraryImage(imagePath) {
     .join("/");
   return `${SUPABASE_ITINERARY.url}/storage/v1/object/public/${encodeURIComponent(
     SUPABASE_ITINERARY.imageBucket
+  )}/${encodedPath}`;
+}
+
+function resolveHotBrandImage(imagePath) {
+  if (!imagePath) return "";
+  if (/^https?:\/\//i.test(imagePath)) return imagePath;
+  const encodedPath = String(imagePath)
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+  return `${SUPABASE_ITINERARY.url}/storage/v1/object/public/${encodeURIComponent(
+    SUPABASE_ITINERARY.hotBrandImageBucket
   )}/${encodedPath}`;
 }
 
@@ -3409,6 +3540,79 @@ async function loadReferenceFilms() {
   if (state.view === "references") render();
 }
 
+function normalizeHotBrandRows(rows) {
+  return rows
+    .map((row) => {
+      const name = String(row.brand_name || "").trim();
+      if (!name) return null;
+      return {
+        id: row.id,
+        name,
+        country: String(row.country || "").trim().toUpperCase(),
+        image: resolveHotBrandImage(row.image_path),
+        imageAlt: String(row.image_alt || `${name} 品牌圖片`).trim(),
+        sortOrder: Number.isFinite(Number(row.sort_order))
+          ? Number(row.sort_order)
+          : Number.MAX_SAFE_INTEGER
+      };
+    })
+    .filter((brand) => brand && brand.country === "JAPAN")
+    .sort(
+      (a, b) =>
+        a.sortOrder - b.sortOrder ||
+        a.name.localeCompare(b.name, "ja")
+    );
+}
+
+async function loadHotBrands() {
+  if (!isSupabaseHotBrandConfigured()) {
+    hotBrandsStatus = "config";
+    hotBrandsError = "尚未設定 Hot_brand 資料表或品牌圖片儲存空間。";
+    if (state.view === "brands") render();
+    return;
+  }
+
+  hotBrandsStatus = "loading";
+  hotBrandsError = "";
+  if (state.view === "brands") render();
+
+  try {
+    const endpoint = new URL(
+      `/rest/v1/${SUPABASE_ITINERARY.hotBrandTable}`,
+      `${SUPABASE_ITINERARY.url}/`
+    );
+    endpoint.searchParams.set(
+      "select",
+      "id,country,brand_name,image_path,image_alt,sort_order,is_active,created_at"
+    );
+    endpoint.searchParams.set("country", "eq.JAPAN");
+    endpoint.searchParams.set("is_active", "eq.true");
+    endpoint.searchParams.set("order", "sort_order.asc.nullslast,brand_name.asc");
+
+    const response = await fetch(endpoint, {
+      cache: "no-store",
+      headers: {
+        apikey: SUPABASE_ITINERARY.apiKey,
+        "Cache-Control": "no-cache",
+        Pragma: "no-cache"
+      }
+    });
+    if (!response.ok) throw new Error(`Supabase Hot_brand ${response.status}`);
+
+    const rows = await response.json();
+    hotBrands = normalizeHotBrandRows(Array.isArray(rows) ? rows : []);
+    hotBrandsStatus = hotBrands.length ? "ready" : "empty";
+  } catch (error) {
+    hotBrands = [];
+    hotBrandsStatus = "error";
+    hotBrandsError =
+      "目前無法讀取品牌資料，請先執行 Hot_brand SQL 並確認資料表與 RLS 設定。";
+    console.error("Hot brands load failed", error);
+  }
+
+  if (state.view === "brands") render();
+}
+
 function ensureInstagramEmbedScript() {
   if (window.instgrm?.Embeds) return Promise.resolve(true);
   if (instagramEmbedScriptPromise) return instagramEmbedScriptPromise;
@@ -3492,6 +3696,7 @@ function render() {
   if (state.view === "home") view.innerHTML = renderHome();
   if (state.view === "itinerary") view.innerHTML = renderItinerary();
   if (state.view === "references") view.innerHTML = renderReferences();
+  if (state.view === "brands") view.innerHTML = renderBrands();
   if (state.view === "expenses") view.innerHTML = renderExpenses();
   if (state.view === "photos") view.innerHTML = renderPhotos();
   if (state.view === "home") {
@@ -3866,6 +4071,76 @@ function renderReferences() {
                 </div>
               </div>
             </article>
+          `
+        )
+        .join("")}
+    </section>
+  `;
+}
+
+function renderBrands() {
+  const header = `
+    <section class="page-header">
+      <span class="section-kicker">STORE BOOKMARKS</span>
+      <h1>找店書籤</h1>
+      <p>點選品牌，立即在 Google Maps 搜尋目前位置周圍的門市。</p>
+    </section>
+  `;
+
+  if (hotBrandsStatus !== "ready") {
+    const statusMessages = {
+      loading: ["正在整理品牌書籤", "正從 Supabase 讀取日本品牌資料。"],
+      config: ["尚未設定品牌資料表", hotBrandsError],
+      empty: [
+        "目前還沒有日本品牌",
+        "請在 Hot_brand 資料表新增 country 為 JAPAN 的啟用項目。"
+      ],
+      error: ["品牌書籤讀取失敗", hotBrandsError]
+    };
+    const [title, message] = statusMessages[hotBrandsStatus] || statusMessages.error;
+    return `
+      ${header}
+      <article class="supabase-status-card">
+        ${icon(hotBrandsStatus === "loading" ? "cloud" : "info")}
+        <div>
+          <strong>${escapeHtml(title)}</strong>
+          <span>${escapeHtml(message)}</span>
+        </div>
+      </article>
+    `;
+  }
+
+  return `
+    ${header}
+    <section class="brand-grid" aria-label="日本品牌找店書籤">
+      ${hotBrands
+        .map(
+          (brand) => `
+            <a
+              class="brand-card"
+              href="${escapeHtml(googleMapsSearchUrl(brand.name))}"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="在 Google Maps 搜尋 ${escapeHtml(brand.name)} 附近門市"
+            >
+              <div class="brand-card-image">
+                <div class="brand-card-placeholder" aria-hidden="true">${icon("store")}</div>
+                ${
+                  brand.image
+                    ? `<img
+                        src="${escapeHtml(brand.image)}"
+                        alt="${escapeHtml(brand.imageAlt)}"
+                        loading="lazy"
+                        onerror="this.remove()"
+                      />`
+                    : ""
+                }
+              </div>
+              <div class="brand-card-copy">
+                <h2>${escapeHtml(brand.name)}</h2>
+                ${icon("map")}
+              </div>
+            </a>
           `
         )
         .join("")}
@@ -4674,6 +4949,7 @@ hydrateIcons();
 render();
 loadItinerary();
 loadReferenceFilms();
+loadHotBrands();
 refreshRate(false);
 refreshWeather();
 window.setInterval(() => refreshRate(false), 5 * 60 * 1000);
