@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Build: 2026-07-29-keihan-days-direct-date-map-v16 -->
+<!-- Build: 2026-07-29-keihan-instagram-references-v17 -->
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
@@ -136,11 +136,11 @@ img {
   bottom: 0;
   left: 0;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   width: min(100%, 760px);
   height: calc(76px + var(--safe-bottom));
   margin: 0 auto;
-  padding: 8px 12px calc(8px + var(--safe-bottom));
+  padding: 8px 6px calc(8px + var(--safe-bottom));
   border-top: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 -8px 28px rgba(36, 30, 25, 0.08);
@@ -156,7 +156,7 @@ img {
   border-radius: 16px;
   background: transparent;
   color: #8d8983;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
 }
 
@@ -1578,6 +1578,185 @@ img {
   line-height: 1.5;
 }
 
+.references-guide {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 14px 16px;
+  padding: 14px 15px;
+  border: 1px solid rgba(197, 160, 101, 0.26);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(197, 160, 101, 0.13), rgba(197, 160, 101, 0.03)),
+    var(--card);
+}
+
+.references-guide > .ui-icon {
+  color: var(--gold-deep);
+  font-size: 27px;
+}
+
+.references-guide strong,
+.references-guide span {
+  display: block;
+}
+
+.references-guide strong {
+  font-size: 12px;
+}
+
+.references-guide span {
+  margin-top: 3px;
+  color: var(--ink-soft);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.references-feed {
+  display: grid;
+  gap: 20px;
+  padding: 0 14px 24px;
+}
+
+.reference-card {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 25px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+  scroll-margin-top: 14px;
+  scroll-snap-align: start;
+}
+
+.reference-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 17px 17px 14px;
+}
+
+.reference-card-header > div {
+  min-width: 0;
+}
+
+.reference-card-index {
+  flex: none;
+  color: var(--gold-deep);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.reference-card-header h2 {
+  margin: 5px 0 0;
+  font-size: 18px;
+  line-height: 1.35;
+}
+
+.reference-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.reference-tags span {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: var(--gold-soft);
+  color: var(--gold-deep);
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.reference-embed-shell {
+  position: relative;
+  display: flex;
+  min-height: 520px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-top: 1px solid var(--line-soft);
+  border-bottom: 1px solid var(--line-soft);
+  background:
+    radial-gradient(circle at 50% 28%, rgba(197, 160, 101, 0.16), transparent 38%),
+    #0d0c0b;
+}
+
+.reference-embed-placeholder {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  padding: 30px;
+  color: var(--ink-soft);
+  text-align: center;
+}
+
+.reference-embed-placeholder .ui-icon {
+  color: var(--gold-deep);
+  font-size: 42px;
+}
+
+.reference-embed-placeholder strong {
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.reference-embed-placeholder span {
+  max-width: 230px;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.reference-embed-shell .instagram-media {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 540px !important;
+  margin: 0 auto !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+}
+
+.reference-card-footer {
+  display: grid;
+  gap: 12px;
+  padding: 15px 17px 17px;
+}
+
+.reference-card-footer p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.reference-open-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 45px;
+  border: 1px solid rgba(197, 160, 101, 0.34);
+  border-radius: 14px;
+  background: #f7efe5;
+  color: #241b16;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.reference-open-button .ui-icon {
+  font-size: 18px;
+}
+
+@media (max-width: 390px) {
+  .reference-embed-shell {
+    min-height: 500px;
+  }
+}
+
 .floating-add {
   position: fixed;
   z-index: 42;
@@ -2709,6 +2888,10 @@ img {
           <span class="icon-slot" data-icon="calendar"></span>
           <span>散策</span>
         </button>
+        <button class="nav-item" data-view="references" aria-label="行前參考">
+          <span class="icon-slot" data-icon="references"></span>
+          <span>參考</span>
+        </button>
         <button class="nav-item" data-view="expenses" aria-label="記帳">
           <span class="icon-slot" data-icon="receipt"></span>
           <span>記帳</span>
@@ -2734,12 +2917,14 @@ const SUPABASE_ITINERARY = {
   apiKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1rb2NvZG5kYndncHZlZmhiaXpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzMDY2OTYsImV4cCI6MjEwMDg4MjY5Nn0.Ha5MpBY0gDm9pMFfe1adV3Df1n5_H2WkH-j9n5hEemY",
   table: "KYOTO202611_Itinerary",
   daysTable: "KYOTO202611_Days",
+  referencesTable: "References_film",
   imageBucket: "kyoto202611-itinerary"
 };
 
 const ICONS = {
   home: "solar:home-2-linear",
   calendar: "solar:calendar-linear",
+  references: "solar:play-circle-linear",
   receipt: "solar:bill-list-linear",
   camera: "solar:camera-linear",
   settings: "solar:settings-linear",
@@ -2960,10 +3145,15 @@ let weather = { status: "loading", city: "京都", temperature: "--", label: "�
 let weatherRequestId = 0;
 let itineraryStatus = "loading";
 let itineraryError = "";
+let referenceFilms = [];
+let referencesStatus = "loading";
+let referencesError = "";
+let referenceEmbedObserver;
+let instagramEmbedScriptPromise;
 let dayCoverTimer;
 let toastTimer;
 let itineraryDaySummariesByDate = new Map();
-const BUILD_VERSION = "2026-07-29-keihan-days-direct-date-map-v16";
+const BUILD_VERSION = "2026-07-29-keihan-instagram-references-v17";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -3101,6 +3291,14 @@ function isSupabaseItineraryConfigured() {
     !SUPABASE_ITINERARY.apiKey.includes("YOUR_SUPABASE_PUBLISHABLE_OR_ANON_KEY") &&
     SUPABASE_ITINERARY.table &&
     SUPABASE_ITINERARY.daysTable
+  );
+}
+
+function isSupabaseReferencesConfigured() {
+  return (
+    SUPABASE_ITINERARY.url.startsWith("https://") &&
+    SUPABASE_ITINERARY.apiKey &&
+    SUPABASE_ITINERARY.referencesTable
   );
 }
 
@@ -3257,8 +3455,163 @@ async function loadItinerary() {
   if (state.view === "itinerary") render();
 }
 
+function normalizeInstagramPermalink(value) {
+  try {
+    const url = new URL(String(value || "").trim());
+    const hostname = url.hostname.toLowerCase().replace(/^www\./, "");
+    if (hostname !== "instagram.com") return "";
+
+    const match = url.pathname.match(/^\/(reel|p|tv)\/([a-z0-9_-]+)/i);
+    if (!match) return "";
+    return `https://www.instagram.com/${match[1].toLowerCase()}/${match[2]}/`;
+  } catch {
+    return "";
+  }
+}
+
+function normalizeReferenceFilmRows(rows) {
+  return rows
+    .map((row, index) => {
+      const reelUrl = normalizeInstagramPermalink(row.reel_url);
+      if (!reelUrl) return null;
+      return {
+        id: row.id,
+        reelUrl,
+        title: String(row.title || `旅行靈感 #${index + 1}`).trim(),
+        category: String(row.category || "").trim(),
+        destination: String(row.destination || "").trim(),
+        note: String(row.note || "").trim(),
+        sortOrder: Number.isFinite(Number(row.sort_order))
+          ? Number(row.sort_order)
+          : Number.MAX_SAFE_INTEGER
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+async function loadReferenceFilms() {
+  if (!isSupabaseReferencesConfigured()) {
+    referencesStatus = "config";
+    referencesError = "尚未設定 References_film 資料表。";
+    if (state.view === "references") render();
+    return;
+  }
+
+  referencesStatus = "loading";
+  referencesError = "";
+  if (state.view === "references") render();
+
+  try {
+    const endpoint = new URL(
+      `/rest/v1/${SUPABASE_ITINERARY.referencesTable}`,
+      `${SUPABASE_ITINERARY.url}/`
+    );
+    endpoint.searchParams.set(
+      "select",
+      "id,reel_url,title,category,destination,note,sort_order,is_active,created_at"
+    );
+    endpoint.searchParams.set("is_active", "eq.true");
+    endpoint.searchParams.set("order", "sort_order.asc.nullslast,created_at.asc");
+
+    const response = await fetch(endpoint, {
+      cache: "no-store",
+      headers: {
+        apikey: SUPABASE_ITINERARY.apiKey,
+        "Cache-Control": "no-cache",
+        Pragma: "no-cache"
+      }
+    });
+    if (!response.ok) throw new Error(`Supabase references ${response.status}`);
+
+    const rows = await response.json();
+    referenceFilms = normalizeReferenceFilmRows(Array.isArray(rows) ? rows : []);
+    referencesStatus = referenceFilms.length ? "ready" : "empty";
+  } catch (error) {
+    referenceFilms = [];
+    referencesStatus = "error";
+    referencesError =
+      "目前無法讀取行前參考資料，請先執行 References_film SQL 並確認 RLS 設定。";
+    console.error("Reference films load failed", error);
+  }
+
+  if (state.view === "references") render();
+}
+
+function ensureInstagramEmbedScript() {
+  if (window.instgrm?.Embeds) return Promise.resolve(true);
+  if (instagramEmbedScriptPromise) return instagramEmbedScriptPromise;
+
+  instagramEmbedScriptPromise = new Promise((resolve) => {
+    const existing = document.getElementById("instagram-embed-script");
+    if (existing) {
+      existing.addEventListener("load", () => resolve(true), { once: true });
+      existing.addEventListener("error", () => resolve(false), { once: true });
+      window.setTimeout(() => resolve(Boolean(window.instgrm?.Embeds)), 4500);
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.id = "instagram-embed-script";
+    script.async = true;
+    script.src = "https://www.instagram.com/embed.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+  return instagramEmbedScriptPromise;
+}
+
+function mountInstagramEmbed(shell) {
+  if (!shell || shell.dataset.embedLoaded === "true") return;
+  const reelUrl = normalizeInstagramPermalink(shell.dataset.reelUrl);
+  if (!reelUrl) return;
+
+  shell.dataset.embedLoaded = "true";
+  shell.innerHTML = `
+    <blockquote
+      class="instagram-media"
+      data-instgrm-permalink="${escapeHtml(reelUrl)}"
+      data-instgrm-version="14"
+    ></blockquote>
+  `;
+  ensureInstagramEmbedScript().then((loaded) => {
+    if (!loaded || state.view !== "references") return;
+    window.requestAnimationFrame(() => window.instgrm?.Embeds?.process());
+  });
+}
+
+function stopReferenceFilmObserver() {
+  referenceEmbedObserver?.disconnect();
+  referenceEmbedObserver = undefined;
+}
+
+function initReferenceFilmEmbeds(root) {
+  stopReferenceFilmObserver();
+  const shells = [...root.querySelectorAll("[data-reference-embed]")];
+  if (!shells.length) return;
+
+  if (!("IntersectionObserver" in window)) {
+    shells.forEach(mountInstagramEmbed);
+    return;
+  }
+
+  referenceEmbedObserver = new IntersectionObserver(
+    (entries, observer) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        mountInstagramEmbed(entry.target);
+        observer.unobserve(entry.target);
+      });
+    },
+    { rootMargin: "900px 0px" }
+  );
+  shells.forEach((shell) => referenceEmbedObserver.observe(shell));
+}
+
 function render() {
   stopDayCoverCarousel();
+  stopReferenceFilmObserver();
   document.body.dataset.view = state.view;
   document.querySelectorAll(".nav-item").forEach((button) => {
     button.classList.toggle("active", button.dataset.view === state.view);
@@ -3267,6 +3620,7 @@ function render() {
   const view = document.getElementById("view");
   if (state.view === "home") view.innerHTML = renderHome();
   if (state.view === "itinerary") view.innerHTML = renderItinerary();
+  if (state.view === "references") view.innerHTML = renderReferences();
   if (state.view === "expenses") view.innerHTML = renderExpenses();
   if (state.view === "photos") view.innerHTML = renderPhotos();
   if (state.view === "home") {
@@ -3281,6 +3635,7 @@ function render() {
     keepActiveDayTabVisible(view);
     startDayCoverCarousel(view);
   }
+  if (state.view === "references") initReferenceFilmEmbeds(view);
 }
 
 function stopDayCoverCarousel() {
@@ -3585,6 +3940,101 @@ function renderItinerary() {
               </div>
             </article>`;
         })
+        .join("")}
+    </section>
+  `;
+}
+
+function renderReferences() {
+  const header = `
+    <section class="page-header">
+      <span class="section-kicker">TRAVEL REFERENCES</span>
+      <h1>行前參考</h1>
+      <p>把收藏的景點、美食與交通靈感集中在旅程開始之前。</p>
+    </section>
+  `;
+
+  if (referencesStatus !== "ready") {
+    const statusMessages = {
+      loading: ["正在整理旅行靈感", "正從 Supabase 讀取已啟用的 Instagram 影片連結。"],
+      config: ["尚未建立參考資料表", referencesError],
+      empty: [
+        "目前還沒有參考影片",
+        "請在 References_film 資料表加入公開的 Instagram Reel 網址。"
+      ],
+      error: ["行前參考讀取失敗", referencesError]
+    };
+    const [title, message] = statusMessages[referencesStatus] || statusMessages.error;
+    return `
+      ${header}
+      <article class="supabase-status-card">
+        ${icon(referencesStatus === "loading" ? "cloud" : "info")}
+        <div>
+          <strong>${escapeHtml(title)}</strong>
+          <span>${escapeHtml(message)}</span>
+        </div>
+      </article>
+    `;
+  }
+
+  return `
+    ${header}
+
+    <article class="references-guide">
+      ${icon("references")}
+      <div>
+        <strong>上下滑動尋找旅行靈感</strong>
+        <span>影片由 Instagram 官方嵌入；若無法播放，可使用卡片下方按鈕開啟原始內容。</span>
+      </div>
+    </article>
+
+    <section class="references-feed" aria-label="Instagram 行前參考影片">
+      ${referenceFilms
+        .map(
+          (film, index) => `
+            <article class="reference-card">
+              <header class="reference-card-header">
+                <div>
+                  ${
+                    film.category || film.destination
+                      ? `<div class="reference-tags">
+                          ${film.category ? `<span>${escapeHtml(film.category)}</span>` : ""}
+                          ${film.destination ? `<span>${escapeHtml(film.destination)}</span>` : ""}
+                        </div>`
+                      : ""
+                  }
+                  <h2>${escapeHtml(film.title)}</h2>
+                </div>
+                <span class="reference-card-index">#${String(index + 1).padStart(2, "0")}</span>
+              </header>
+
+              <div
+                class="reference-embed-shell"
+                data-reference-embed
+                data-reel-url="${escapeHtml(film.reelUrl)}"
+                aria-label="${escapeHtml(film.title)} Instagram 影片"
+              >
+                <div class="reference-embed-placeholder">
+                  ${icon("references")}
+                  <strong>正在載入 Instagram 影片</strong>
+                  <span>公開 Reel 會透過 Instagram 官方播放器顯示。</span>
+                </div>
+              </div>
+
+              <footer class="reference-card-footer">
+                ${film.note ? `<p>${escapeHtml(film.note)}</p>` : ""}
+                <a
+                  class="reference-open-button"
+                  href="${escapeHtml(film.reelUrl)}"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  ${icon("references")} 前往 Instagram 觀看 ${icon("arrow")}
+                </a>
+              </footer>
+            </article>
+          `
+        )
         .join("")}
     </section>
   `;
@@ -4390,6 +4840,7 @@ document.documentElement.dataset.buildVersion = BUILD_VERSION;
 hydrateIcons();
 render();
 loadItinerary();
+loadReferenceFilms();
 refreshRate(false);
 refreshWeather();
 window.setInterval(() => refreshRate(false), 5 * 60 * 1000);
