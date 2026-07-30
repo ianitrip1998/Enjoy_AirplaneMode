@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Build: 2026-07-30-keihan-navigation-icons-compact-brands-v22 -->
+<!-- Build: 2026-07-30-keihan-null-time-hidden-v23 -->
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
@@ -3157,7 +3157,7 @@ let instagramEmbedScriptPromise;
 let dayCoverTimer;
 let toastTimer;
 let itineraryDaySummariesByDate = new Map();
-const BUILD_VERSION = "2026-07-30-keihan-navigation-icons-compact-brands-v22";
+const BUILD_VERSION = "2026-07-30-keihan-null-time-hidden-v23";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -3360,6 +3360,8 @@ function normalizeItineraryRows(dayRows, itemRows) {
     if (!itemsByDate.has(tripDate)) itemsByDate.set(tripDate, []);
 
     const title = row.title || "未命名景點";
+    const timeType = String(row.time_type ?? "").trim();
+    const timeText = String(row.time_text ?? "").trim();
     itemsByDate.get(tripDate).push({
       id: row.id,
       sortOrder: Number.isFinite(Number(row.sort_order))
@@ -3368,9 +3370,10 @@ function normalizeItineraryRows(dayRows, itemRows) {
       title,
       type: row.category || "行程",
       subtitle: row.subtitle || "",
-      timeType: row.time_type,
-      timeLabel: timeLabels[row.time_type] || "適合時段",
-      timeText: row.time_text || "",
+      timeType,
+      timeLabel: timeType ? timeLabels[timeType] || "適合時段" : "適合時段",
+      timeText,
+      hasTimeInfo: Boolean(timeType || timeText),
       note: row.note || "",
       query: row.map_query || title,
       image: resolveItineraryImage(row.image_path),
@@ -4032,11 +4035,15 @@ function renderItinerary() {
                 ${item.isOptional ? '<span class="optional-tag">彈性安排</span>' : ""}
                 <h3>${escapeHtml(item.title)}</h3>
                 <p>${escapeHtml(item.subtitle)}</p>
-                <div class="time-range">
-                  ${icon("clock")}
-                  <strong>${escapeHtml(item.timeLabel)}</strong>
-                  <span>${escapeHtml(item.timeText)}</span>
-                </div>
+                ${
+                  item.hasTimeInfo
+                    ? `<div class="time-range">
+                        ${icon("clock")}
+                        <strong>${escapeHtml(item.timeLabel)}</strong>
+                        <span>${escapeHtml(item.timeText)}</span>
+                      </div>`
+                    : ""
+                }
                 <a class="map-button" href="${mapUrl(item.query || item.title)}" target="_blank" rel="noreferrer">
                   ${icon("map")} Google Maps 導航
                 </a>
