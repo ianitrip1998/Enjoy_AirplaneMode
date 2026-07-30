@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Build: 2026-07-30-keihan-content-scroll-spacing-v27 -->
+<!-- Build: 2026-07-30-keihan-ios-modal-scroll-fix-v28 -->
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
@@ -35,6 +35,8 @@
   --shadow: 0 14px 40px rgba(0, 0, 0, 0.34);
   --shadow-soft: 0 7px 20px rgba(0, 0, 0, 0.22);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --visual-viewport-height: 100vh;
+  --visual-viewport-offset-top: 0px;
 }
 
 * {
@@ -1949,17 +1951,26 @@ img {
 }
 
 .modal-open {
+  position: fixed;
+  right: 0;
+  left: 0;
+  width: 100%;
   overflow: hidden;
 }
 
 .modal-backdrop {
   position: fixed;
   z-index: 100;
-  inset: 0;
+  top: var(--visual-viewport-offset-top);
+  right: 0;
+  bottom: auto;
+  left: 0;
   display: flex;
+  height: var(--visual-viewport-height);
   align-items: flex-end;
   justify-content: center;
-  padding-top: 30px;
+  overflow: hidden;
+  padding-top: max(12px, env(safe-area-inset-top, 0px));
   background: rgba(18, 16, 14, 0.5);
   backdrop-filter: blur(5px);
 }
@@ -1967,12 +1978,19 @@ img {
 .modal-sheet {
   position: relative;
   width: min(100%, 760px);
-  max-height: 91vh;
-  overflow-y: auto;
+  max-height: calc(
+    var(--visual-viewport-height) - max(12px, env(safe-area-inset-top, 0px))
+  );
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: scroll;
+  overscroll-behavior-y: contain;
   padding: 28px 18px calc(24px + var(--safe-bottom));
   border-radius: 29px 29px 0 0;
   background: #faf8f4;
   box-shadow: 0 -14px 40px rgba(18, 16, 14, 0.18);
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
   animation: slide-up 0.24s ease-out both;
 }
 
@@ -1995,13 +2013,15 @@ img {
 }
 
 .modal-close {
-  position: absolute;
-  z-index: 2;
-  top: 22px;
-  right: 16px;
+  position: sticky;
+  z-index: 10;
+  top: 8px;
   display: grid;
   width: 36px;
   height: 36px;
+  margin-right: 0;
+  margin-bottom: -36px;
+  margin-left: auto;
   place-items: center;
   border-radius: 50%;
   background: #eeebe5;
@@ -2916,6 +2936,23 @@ function resetScrollAfterPageReload() {
 window.addEventListener("load", resetScrollAfterPageReload);
 window.addEventListener("pageshow", resetScrollAfterPageReload);
 window.addEventListener("beforeunload", () => window.scrollTo(0, 0));
+function syncVisualViewportMetrics() {
+  const viewport = window.visualViewport;
+  const viewportHeight = Math.round(viewport?.height || window.innerHeight);
+  const viewportOffsetTop = Math.round(viewport?.offsetTop || 0);
+  document.documentElement.style.setProperty(
+    "--visual-viewport-height",
+    `${viewportHeight}px`
+  );
+  document.documentElement.style.setProperty(
+    "--visual-viewport-offset-top",
+    `${viewportOffsetTop}px`
+  );
+}
+syncVisualViewportMetrics();
+window.addEventListener("resize", syncVisualViewportMetrics);
+window.visualViewport?.addEventListener("resize", syncVisualViewportMetrics);
+window.visualViewport?.addEventListener("scroll", syncVisualViewportMetrics);
 // Supabase 建立完成後，只需替換下方的 url 與 apiKey。
 const SUPABASE_ITINERARY = {
   url: "https://mkocodndbwgpvefhbizg.supabase.co",
@@ -3166,8 +3203,9 @@ let referenceEmbedObserver;
 let instagramEmbedScriptPromise;
 let dayCoverTimer;
 let toastTimer;
+let modalPageScrollY = 0;
 let itineraryDaySummariesByDate = new Map();
-const BUILD_VERSION = "2026-07-30-keihan-content-scroll-spacing-v27";
+const BUILD_VERSION = "2026-07-30-keihan-ios-modal-scroll-fix-v28";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -4388,6 +4426,11 @@ function renderExpenses() {
 
 function openModal(content, options = {}) {
   const root = document.getElementById("modalRoot");
+  syncVisualViewportMetrics();
+  if (!document.body.classList.contains("modal-open")) {
+    modalPageScrollY = window.scrollY || window.pageYOffset || 0;
+    document.body.style.top = `-${modalPageScrollY}px`;
+  }
   root.innerHTML = `
     <div class="modal-backdrop" data-action="close-modal">
       <section class="modal-sheet ${options.size === "large" ? "large" : ""} ${escapeHtml(
@@ -4402,13 +4445,21 @@ function openModal(content, options = {}) {
     </div>`;
   hydrateIcons(root);
   document.body.classList.add("modal-open");
-  const firstInput = root.querySelector("input:not([type=hidden]), select, textarea, button");
-  window.setTimeout(() => firstInput?.focus(), 50);
+  const sheet = root.querySelector(".modal-sheet");
+  const closeButton = root.querySelector(".modal-close");
+  if (sheet) sheet.scrollTop = 0;
+  window.setTimeout(() => {
+    closeButton?.focus({ preventScroll: true });
+    if (sheet) sheet.scrollTop = 0;
+  }, 50);
 }
 
 function closeModal() {
+  const restoreScrollY = modalPageScrollY;
   document.getElementById("modalRoot").innerHTML = "";
   document.body.classList.remove("modal-open");
+  document.body.style.top = "";
+  window.requestAnimationFrame(() => window.scrollTo(0, restoreScrollY));
 }
 
 function openItineraryNote(dayNumber, itemIndex) {
