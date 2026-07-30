@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Build: 2026-07-30-keihan-account-splits-v31 -->
+<!-- Build: 2026-07-30-keihan-account-twd-splits-v32 -->
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
@@ -2158,11 +2158,13 @@ img {
   display: grid;
   gap: 13px;
   margin-top: 22px;
+  min-width: 0;
 }
 
 .form-stack label {
   display: grid;
   gap: 7px;
+  min-width: 0;
 }
 
 .form-stack label > span:first-child {
@@ -2187,6 +2189,16 @@ img {
 .form-stack textarea {
   min-height: 90px;
   resize: vertical;
+}
+
+.form-stack input[type="date"] {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  inline-size: 100%;
+  min-inline-size: 0;
+  box-sizing: border-box;
 }
 
 .form-stack input:focus,
@@ -3345,7 +3357,7 @@ let dayCoverTimer;
 let toastTimer;
 let modalPageScrollY = 0;
 let itineraryDaySummariesByDate = new Map();
-const BUILD_VERSION = "2026-07-30-keihan-account-splits-v31";
+const BUILD_VERSION = "2026-07-30-keihan-account-twd-splits-v32";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -3399,15 +3411,6 @@ function formatTwd(value) {
 
 function formatJpy(value) {
   return `¥ ${Math.round(Number(value) || 0).toLocaleString("ja-JP")}`;
-}
-
-function formatJpyShare(value) {
-  const amount = Number(value) || 0;
-  const hasFraction = Math.abs(amount - Math.round(amount)) > 0.0001;
-  return `¥ ${amount.toLocaleString("ja-JP", {
-    minimumFractionDigits: hasFraction ? 2 : 0,
-    maximumFractionDigits: 2
-  })}`;
 }
 
 function formatJpyPerTwd(value) {
@@ -4575,7 +4578,7 @@ function renderExpenses() {
                         expense.travelerShares.length
                           ? `分攤旅客：${expense.travelerShares
                               .map((share) => share.number)
-                              .join("、")} · 每人 ${formatJpyShare(
+                            .join("、")} · 每人 ${formatTwd(
                               expense.travelerShares[0].amount
                             )}`
                           : "尚未設定分攤對象"
@@ -4758,9 +4761,10 @@ function updateExpenseConversionPreview() {
       : "尚未選擇";
   }
   if (shareAmount) {
+    const convertedAmountTwd = amountJpy * state.settings.jpyToTwd;
     shareAmount.textContent =
       selectedTravelers && input.value !== "" && Number.isFinite(amountJpy)
-        ? `每人 ${formatJpyShare(amountJpy / selectedTravelers)}`
+        ? `每人 ${formatTwd(convertedAmountTwd / selectedTravelers)}`
         : "每人 —";
   }
 }
@@ -5159,8 +5163,9 @@ document.addEventListener("submit", async (event) => {
       showToast("請至少選擇一位分攤旅客");
       return;
     }
-    const averageShareJpy = Number(
-      (amountJpy / selectedTravelers.length).toFixed(2)
+    const convertedAmountTwd = amountJpy * state.settings.jpyToTwd;
+    const averageShareTwd = Math.round(
+      convertedAmountTwd / selectedTravelers.length
     );
     const payload = {
       expense_item: String(data.get("expenseItem") || "").trim(),
@@ -5168,13 +5173,11 @@ document.addEventListener("submit", async (event) => {
       payer: String(data.get("payer") || ""),
       payment_method: String(data.get("paymentMethod") || ""),
       receipt_amount_jpy: amountJpy,
-      converted_amount_twd: Number(
-        (amountJpy * state.settings.jpyToTwd).toFixed(2)
-      )
+      converted_amount_twd: Number(convertedAmountTwd.toFixed(2))
     };
     for (let travelerNumber = 1; travelerNumber <= 10; travelerNumber += 1) {
       payload[`traveler_${travelerNumber}`] =
-        selectedTravelers.includes(travelerNumber) ? averageShareJpy : null;
+        selectedTravelers.includes(travelerNumber) ? averageShareTwd : null;
     }
 
     const submitButton = form.querySelector('button[type="submit"]');
