@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Build: 2026-07-30-keihan-null-time-hidden-v23 -->
+<!-- Build: 2026-07-30-keihan-itinerary-columns-cleanup-v24 -->
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
@@ -3157,7 +3157,7 @@ let instagramEmbedScriptPromise;
 let dayCoverTimer;
 let toastTimer;
 let itineraryDaySummariesByDate = new Map();
-const BUILD_VERSION = "2026-07-30-keihan-null-time-hidden-v23";
+const BUILD_VERSION = "2026-07-30-keihan-itinerary-columns-cleanup-v24";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -3377,7 +3377,7 @@ function normalizeItineraryRows(dayRows, itemRows) {
       note: row.note || "",
       query: row.map_query || title,
       image: resolveItineraryImage(row.image_path),
-      imageAlt: row.image_alt || `${title}的旅行照片`,
+      imageAlt: `${title}的旅行照片`,
       hoursSource: row.hours_source_url || "",
       isOptional: Boolean(row.is_optional)
     });
