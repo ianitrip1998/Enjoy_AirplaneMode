@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Build: 2026-07-30-keihan-supabase-accounts-v30 -->
+<!-- Build: 2026-07-30-keihan-account-splits-v31 -->
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
@@ -2266,6 +2266,39 @@ img {
   font-size: 21px;
 }
 
+.expense-share-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 58px;
+  padding: 13px 15px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: var(--card);
+}
+
+.expense-share-preview > div {
+  display: grid;
+  gap: 4px;
+}
+
+.expense-share-preview span,
+.expense-share-preview strong {
+  color: var(--ink-soft);
+  font-size: 10px;
+}
+
+.expense-share-preview strong {
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.expense-share-preview b {
+  color: var(--gold-deep);
+  font-size: 14px;
+}
+
 .traveler-selector {
   display: grid;
   min-width: 0;
@@ -2309,6 +2342,14 @@ img {
   min-height: 0;
   padding: 0;
   accent-color: var(--gold);
+}
+
+@media (max-width: 699px) {
+  .form-stack input,
+  .form-stack select,
+  .form-stack textarea {
+    font-size: 16px;
+  }
 }
 
 .modal-actions {
@@ -3304,7 +3345,7 @@ let dayCoverTimer;
 let toastTimer;
 let modalPageScrollY = 0;
 let itineraryDaySummariesByDate = new Map();
-const BUILD_VERSION = "2026-07-30-keihan-supabase-accounts-v30";
+const BUILD_VERSION = "2026-07-30-keihan-account-splits-v31";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -3358,6 +3399,15 @@ function formatTwd(value) {
 
 function formatJpy(value) {
   return `¥ ${Math.round(Number(value) || 0).toLocaleString("ja-JP")}`;
+}
+
+function formatJpyShare(value) {
+  const amount = Number(value) || 0;
+  const hasFraction = Math.abs(amount - Math.round(amount)) > 0.0001;
+  return `¥ ${amount.toLocaleString("ja-JP", {
+    minimumFractionDigits: hasFraction ? 2 : 0,
+    maximumFractionDigits: 2
+  })}`;
 }
 
 function formatJpyPerTwd(value) {
@@ -3791,20 +3841,30 @@ async function loadHotBrands() {
 }
 
 function normalizeAccountRows(rows) {
-  return rows.map((row, index) => ({
-    id: `account-${index}-${String(row.expense_date || "")}`,
-    title: String(row.expense_item || "未命名消費").trim(),
-    date: String(row.expense_date || ""),
-    payer: String(row.payer || "").trim(),
-    payment: String(row.payment_method || "").trim(),
-    amountJpy: Number(row.receipt_amount_jpy) || 0,
-    amountTwd: Number(row.converted_amount_twd) || 0,
-    travelers: Array.from({ length: 10 }, (_, travelerIndex) => travelerIndex + 1).filter(
-      (travelerNumber) =>
-        row[`traveler_${travelerNumber}`] === true ||
-        row[`traveler_${travelerNumber}`] === "true"
+  return rows.map((row, index) => {
+    const travelerShares = Array.from(
+      { length: 10 },
+      (_, travelerIndex) => travelerIndex + 1
     )
-  }));
+      .map((travelerNumber) => {
+        const rawAmount = row[`traveler_${travelerNumber}`];
+        if (rawAmount === null || rawAmount === undefined || rawAmount === "") return null;
+        const amount = Number(rawAmount);
+        return Number.isFinite(amount) ? { number: travelerNumber, amount } : null;
+      })
+      .filter(Boolean);
+
+    return {
+      id: `account-${index}-${String(row.expense_date || "")}`,
+      title: String(row.expense_item || "未命名消費").trim(),
+      date: String(row.expense_date || ""),
+      payer: String(row.payer || "").trim(),
+      payment: String(row.payment_method || "").trim(),
+      amountJpy: Number(row.receipt_amount_jpy) || 0,
+      amountTwd: Number(row.converted_amount_twd) || 0,
+      travelerShares
+    };
+  });
 }
 
 async function loadAccounts() {
@@ -4511,10 +4571,14 @@ function renderExpenses() {
                         accountTravelerLabel(expense.payer)
                       )} · ${escapeHtml(expense.payment || "未填付款方式")}</span>
                       <small>約 ${formatTwd(expense.amountTwd)}</small>
-                      <small class="expense-participants">分攤旅客：${
-                        expense.travelers.length
-                          ? expense.travelers.map((number) => `旅客 ${number}`).join("、")
-                          : "未選擇"
+                      <small class="expense-participants">${
+                        expense.travelerShares.length
+                          ? `分攤旅客：${expense.travelerShares
+                              .map((share) => share.number)
+                              .join("、")} · 每人 ${formatJpyShare(
+                              expense.travelerShares[0].amount
+                            )}`
+                          : "尚未設定分攤對象"
                       }</small>
                     </div>
                   </article>`
@@ -4676,12 +4740,29 @@ function defaultAccountDate() {
 function updateExpenseConversionPreview() {
   const input = document.getElementById("expenseJpyInput");
   const result = document.getElementById("expenseTwdPreview");
+  const shareCount = document.getElementById("expenseShareCount");
+  const shareAmount = document.getElementById("expenseShareAmount");
   if (!input || !result) return;
   const amountJpy = Number(input.value);
   result.textContent =
     input.value !== "" && Number.isFinite(amountJpy)
       ? formatTwd(amountJpy * state.settings.jpyToTwd)
       : "—";
+
+  const selectedTravelers = document.querySelectorAll(
+    '#expenseForm input[name^="traveler_"]:checked'
+  ).length;
+  if (shareCount) {
+    shareCount.textContent = selectedTravelers
+      ? `已選 ${selectedTravelers} 人`
+      : "尚未選擇";
+  }
+  if (shareAmount) {
+    shareAmount.textContent =
+      selectedTravelers && input.value !== "" && Number.isFinite(amountJpy)
+        ? `每人 ${formatJpyShare(amountJpy / selectedTravelers)}`
+        : "每人 —";
+  }
 }
 
 function openExpenseForm() {
@@ -4733,6 +4814,13 @@ function openExpenseForm() {
               .join("")}
           </div>
         </fieldset>
+        <div class="expense-share-preview" aria-live="polite">
+          <div>
+            <span>分攤結果</span>
+            <strong id="expenseShareCount">尚未選擇</strong>
+          </div>
+          <b id="expenseShareAmount">每人 —</b>
+        </div>
         <button type="submit" class="primary-action">${icon("check")} 儲存這筆消費</button>
       </form>
     `,
@@ -5061,6 +5149,19 @@ document.addEventListener("submit", async (event) => {
     }
 
     const amountJpy = Math.max(0, Number(data.get("amountJpy")) || 0);
+    const selectedTravelers = Array.from(
+      { length: 10 },
+      (_, travelerIndex) => travelerIndex + 1
+    ).filter(
+      (travelerNumber) => data.get(`traveler_${travelerNumber}`) === "on"
+    );
+    if (!selectedTravelers.length) {
+      showToast("請至少選擇一位分攤旅客");
+      return;
+    }
+    const averageShareJpy = Number(
+      (amountJpy / selectedTravelers.length).toFixed(2)
+    );
     const payload = {
       expense_item: String(data.get("expenseItem") || "").trim(),
       expense_date: String(data.get("expenseDate") || ""),
@@ -5073,7 +5174,7 @@ document.addEventListener("submit", async (event) => {
     };
     for (let travelerNumber = 1; travelerNumber <= 10; travelerNumber += 1) {
       payload[`traveler_${travelerNumber}`] =
-        data.get(`traveler_${travelerNumber}`) === "on";
+        selectedTravelers.includes(travelerNumber) ? averageShareJpy : null;
     }
 
     const submitButton = form.querySelector('button[type="submit"]');
@@ -5104,7 +5205,12 @@ document.addEventListener("submit", async (event) => {
 
 document.addEventListener("input", (event) => {
   if (event.target.id === "currencyJpyInput") updateCurrencyConverter();
-  if (event.target.id === "expenseJpyInput") updateExpenseConversionPreview();
+  if (
+    event.target.id === "expenseJpyInput" ||
+    event.target.matches?.('#expenseForm input[name^="traveler_"]')
+  ) {
+    updateExpenseConversionPreview();
+  }
 });
 
 document.getElementById("importFile").addEventListener("change", (event) => {
