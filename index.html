@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Build: 2026-07-30-keihan-ios-modal-scroll-fix-v28 -->
+<!-- Build: 2026-07-30-keihan-view-navigation-top-v29 -->
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
@@ -2933,6 +2933,15 @@ function resetScrollAfterPageReload() {
   window.requestAnimationFrame(() => window.scrollTo(0, 0));
   window.setTimeout(() => window.scrollTo(0, 0), 120);
 }
+function resetViewScrollPosition() {
+  const scrollToTop = () => {
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    window.scrollTo(0, 0);
+  };
+  scrollToTop();
+  window.requestAnimationFrame(scrollToTop);
+}
 window.addEventListener("load", resetScrollAfterPageReload);
 window.addEventListener("pageshow", resetScrollAfterPageReload);
 window.addEventListener("beforeunload", () => window.scrollTo(0, 0));
@@ -3205,7 +3214,7 @@ let dayCoverTimer;
 let toastTimer;
 let modalPageScrollY = 0;
 let itineraryDaySummariesByDate = new Map();
-const BUILD_VERSION = "2026-07-30-keihan-ios-modal-scroll-fix-v28";
+const BUILD_VERSION = "2026-07-30-keihan-view-navigation-top-v29";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -4865,9 +4874,12 @@ document.addEventListener("click", (event) => {
   if (target.dataset.action === "open-itinerary-note" && event.target.closest("a")) return;
 
   if (target.dataset.view) {
-    state.view = target.dataset.view;
+    const nextView = target.dataset.view;
+    const isViewChange = state.view !== nextView;
+    state.view = nextView;
     saveState();
     render();
+    if (isViewChange) resetViewScrollPosition();
     return;
   }
 
@@ -4891,9 +4903,11 @@ document.addEventListener("click", (event) => {
 
   const actions = {
     "go-home": () => {
+      const isViewChange = state.view !== "home";
       state.view = "home";
       saveState();
       render();
+      if (isViewChange) resetViewScrollPosition();
     },
     "open-settings": openSettings,
     "open-itinerary-note": () =>
