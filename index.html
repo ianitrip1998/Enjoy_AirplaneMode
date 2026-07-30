@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Build: 2026-07-30-keihan-view-navigation-top-v29 -->
+<!-- Build: 2026-07-30-keihan-supabase-accounts-v30 -->
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
@@ -1386,6 +1386,14 @@ img {
   font-size: 9px;
 }
 
+.accounts-summary {
+  grid-template-columns: 1fr;
+}
+
+.accounts-summary article {
+  min-height: 105px;
+}
+
 .category-summary,
 .tax-progress-list {
   margin: 0 14px 14px;
@@ -1508,6 +1516,10 @@ img {
   padding: 0 14px 80px;
 }
 
+.accounts-list .expense-item {
+  grid-template-columns: 42px 1fr;
+}
+
 .expense-item {
   display: grid;
   grid-template-columns: 42px 1fr 32px;
@@ -1568,6 +1580,11 @@ img {
   color: var(--orange);
   font-style: normal;
   font-weight: 800;
+}
+
+.expense-main .expense-participants {
+  color: var(--gold-deep);
+  font-weight: 750;
 }
 
 .expense-item > button {
@@ -2225,6 +2242,75 @@ img {
   line-height: 1.45;
 }
 
+.expense-conversion-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 58px;
+  padding: 13px 15px;
+  border: 1px solid rgba(197, 160, 101, 0.38);
+  border-radius: 15px;
+  background: var(--brown);
+}
+
+.expense-conversion-preview span {
+  color: rgba(247, 239, 229, 0.7);
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.expense-conversion-preview strong {
+  color: var(--ink);
+  font-family: Georgia, "Times New Roman", "Noto Serif TC", serif;
+  font-size: 21px;
+}
+
+.traveler-selector {
+  display: grid;
+  min-width: 0;
+  gap: 9px;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: #fff;
+}
+
+.traveler-selector > span {
+  color: var(--ink-soft);
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.traveler-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.traveler-option {
+  display: flex !important;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px !important;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.traveler-option input {
+  width: 16px;
+  height: 16px;
+  min-height: 0;
+  padding: 0;
+  accent-color: var(--gold);
+}
+
 .modal-actions {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -2499,6 +2585,8 @@ img {
 .form-stack select,
 .form-stack textarea,
 .check-label,
+.traveler-selector,
+.traveler-option,
 .guide-steps li,
 .settings-list,
 .credits-list {
@@ -2970,6 +3058,7 @@ const SUPABASE_ITINERARY = {
   daysTable: "KYOTO202611_Days",
   referencesTable: "References_film",
   hotBrandTable: "Hot_brand",
+  accountsTable: "Accounts_JP202611",
   imageBucket: "kyoto202611-itinerary",
   hotBrandImageBucket: "hot-brand"
 };
@@ -3186,12 +3275,10 @@ const PHOTO_SPOTS = [
 const DEFAULT_STATE = {
   view: "home",
   activeDay: 1,
-  expenseFilter: "all",
   flightIndex: 0,
   itinerary: DEFAULT_ITINERARY,
   expenses: [],
   settings: {
-    budgetTwd: 50000,
     jpyToTwd: 0.216,
     rateUpdated: "參考值"
   }
@@ -3208,13 +3295,16 @@ let referencesError = "";
 let hotBrands = [];
 let hotBrandsStatus = "loading";
 let hotBrandsError = "";
+let accountsStatus = "loading";
+let accountsError = "";
+let accountsSaving = false;
 let referenceEmbedObserver;
 let instagramEmbedScriptPromise;
 let dayCoverTimer;
 let toastTimer;
 let modalPageScrollY = 0;
 let itineraryDaySummariesByDate = new Map();
-const BUILD_VERSION = "2026-07-30-keihan-view-navigation-top-v29";
+const BUILD_VERSION = "2026-07-30-keihan-supabase-accounts-v30";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -3231,7 +3321,7 @@ function loadState() {
       view: availableViews.has(saved.view) ? saved.view : "home",
       settings: { ...clone(DEFAULT_STATE.settings), ...(saved.settings || {}) },
       itinerary: [],
-      expenses: Array.isArray(saved.expenses) ? saved.expenses : []
+      expenses: []
     };
   } catch {
     return clone(DEFAULT_STATE);
@@ -3239,7 +3329,7 @@ function loadState() {
 }
 
 function saveState() {
-  const { itinerary, ...deviceState } = state;
+  const { itinerary, expenses, ...deviceState } = state;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(deviceState));
 }
 
@@ -3278,16 +3368,6 @@ function formatJpyPerTwd(value) {
         maximumFractionDigits: 2
       })
     : "--";
-}
-
-function toTwd(expense) {
-  if (expense.currency === "TWD") return Number(expense.amount) || 0;
-  return (Number(expense.amount) || 0) * state.settings.jpyToTwd;
-}
-
-function toJpy(expense) {
-  if (expense.currency === "JPY") return Number(expense.amount) || 0;
-  return (Number(expense.amount) || 0) / state.settings.jpyToTwd;
 }
 
 function formatTripDate(dateString) {
@@ -3374,6 +3454,14 @@ function isSupabaseHotBrandConfigured() {
     SUPABASE_ITINERARY.apiKey &&
     SUPABASE_ITINERARY.hotBrandTable &&
     SUPABASE_ITINERARY.hotBrandImageBucket
+  );
+}
+
+function isSupabaseAccountsConfigured() {
+  return (
+    SUPABASE_ITINERARY.url.startsWith("https://") &&
+    SUPABASE_ITINERARY.apiKey &&
+    SUPABASE_ITINERARY.accountsTable
   );
 }
 
@@ -3700,6 +3788,92 @@ async function loadHotBrands() {
   }
 
   if (state.view === "brands") render();
+}
+
+function normalizeAccountRows(rows) {
+  return rows.map((row, index) => ({
+    id: `account-${index}-${String(row.expense_date || "")}`,
+    title: String(row.expense_item || "未命名消費").trim(),
+    date: String(row.expense_date || ""),
+    payer: String(row.payer || "").trim(),
+    payment: String(row.payment_method || "").trim(),
+    amountJpy: Number(row.receipt_amount_jpy) || 0,
+    amountTwd: Number(row.converted_amount_twd) || 0,
+    travelers: Array.from({ length: 10 }, (_, travelerIndex) => travelerIndex + 1).filter(
+      (travelerNumber) =>
+        row[`traveler_${travelerNumber}`] === true ||
+        row[`traveler_${travelerNumber}`] === "true"
+    )
+  }));
+}
+
+async function loadAccounts() {
+  if (!isSupabaseAccountsConfigured()) {
+    accountsStatus = "config";
+    accountsError = "尚未設定 Accounts_JP202611 資料表。";
+    if (state.view === "expenses") render();
+    return;
+  }
+
+  accountsStatus = "loading";
+  accountsError = "";
+  if (state.view === "expenses") render();
+
+  try {
+    const endpoint = new URL(
+      `/rest/v1/${SUPABASE_ITINERARY.accountsTable}`,
+      `${SUPABASE_ITINERARY.url}/`
+    );
+    endpoint.searchParams.set(
+      "select",
+      "expense_item,expense_date,payer,payment_method,receipt_amount_jpy,converted_amount_twd,traveler_1,traveler_2,traveler_3,traveler_4,traveler_5,traveler_6,traveler_7,traveler_8,traveler_9,traveler_10"
+    );
+    endpoint.searchParams.set("order", "expense_date.desc");
+
+    const response = await fetch(endpoint, {
+      cache: "no-store",
+      headers: {
+        apikey: SUPABASE_ITINERARY.apiKey,
+        Authorization: `Bearer ${SUPABASE_ITINERARY.apiKey}`,
+        "Cache-Control": "no-cache",
+        Pragma: "no-cache"
+      }
+    });
+    if (!response.ok) throw new Error(`Supabase accounts ${response.status}`);
+
+    const rows = await response.json();
+    state.expenses = normalizeAccountRows(Array.isArray(rows) ? rows : []);
+    accountsStatus = state.expenses.length ? "ready" : "empty";
+  } catch (error) {
+    state.expenses = [];
+    accountsStatus = "error";
+    accountsError =
+      "目前無法讀取旅行記帳，請先執行 Accounts_JP202611 SQL 並確認 RLS 設定。";
+    console.error("Accounts load failed", error);
+  }
+
+  if (state.view === "expenses") render();
+}
+
+async function insertAccountExpense(payload) {
+  const endpoint = new URL(
+    `/rest/v1/${SUPABASE_ITINERARY.accountsTable}`,
+    `${SUPABASE_ITINERARY.url}/`
+  );
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_ITINERARY.apiKey,
+      Authorization: `Bearer ${SUPABASE_ITINERARY.apiKey}`,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal"
+    },
+    body: JSON.stringify(payload)
+  });
+  if (!response.ok) {
+    const message = await response.text().catch(() => "");
+    throw new Error(`Supabase accounts insert ${response.status}: ${message}`);
+  }
 }
 
 function ensureInstagramEmbedScript() {
@@ -4269,163 +4443,90 @@ function renderBrands() {
 }
 
 function expenseTotals() {
-  const totalTwd = state.expenses.reduce((sum, expense) => sum + toTwd(expense), 0);
-  const categoryTotals = state.expenses.reduce((result, expense) => {
-    result[expense.category] = (result[expense.category] || 0) + toTwd(expense);
-    return result;
-  }, {});
-  const estimatedRefundJpy = state.expenses
-    .filter((expense) => expense.taxFree)
-    .reduce((sum, expense) => sum + toJpy(expense) * (10 / 110), 0);
-  return { totalTwd, categoryTotals, estimatedRefundJpy };
+  return state.expenses.reduce(
+    (totals, expense) => ({
+      totalTwd: totals.totalTwd + (Number(expense.amountTwd) || 0),
+      totalJpy: totals.totalJpy + (Number(expense.amountJpy) || 0)
+    }),
+    { totalTwd: 0, totalJpy: 0 }
+  );
 }
 
-function taxFreeProgress() {
-  const groups = {};
-  state.expenses
-    .filter((expense) => expense.category === "購物" && expense.taxFree && expense.store)
-    .forEach((expense) => {
-      const key = `${expense.date}|${expense.store.trim().toLowerCase()}`;
-      if (!groups[key]) groups[key] = { date: expense.date, store: expense.store, total: 0 };
-      groups[key].total += toJpy(expense);
-    });
-  return Object.values(groups).filter((group) => group.total < 5000);
+function accountTravelerLabel(value) {
+  const normalized = String(value || "").trim();
+  if (!normalized) return "未填寫";
+  return /^\d+$/.test(normalized) ? `旅客 ${normalized}` : normalized;
 }
 
 function renderExpenses() {
-  const { totalTwd, categoryTotals, estimatedRefundJpy } = expenseTotals();
-  const remaining = state.settings.budgetTwd - totalTwd;
-  const progress = Math.min(100, (totalTwd / state.settings.budgetTwd) * 100 || 0);
-  const categories = ["全部", "餐飲", "交通", "購物", "門票", "住宿", "其他"];
-  const filtered =
-    state.expenseFilter === "all"
-      ? state.expenses
-      : state.expenses.filter((expense) => expense.category === state.expenseFilter);
-  const reminders = taxFreeProgress();
-  const topCategories = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const { totalTwd, totalJpy } = expenseTotals();
+  const statusMessages = {
+    loading: ["正在讀取旅行記帳", "正從 Supabase 取得最新消費紀錄。"],
+    config: ["尚未設定記帳資料表", accountsError],
+    error: ["旅行記帳讀取失敗", accountsError]
+  };
+  const showStatus = ["loading", "config", "error"].includes(accountsStatus);
+  const [statusTitle, statusMessage] = statusMessages[accountsStatus] || [];
 
   return `
     <section class="page-header">
       <span class="section-kicker">EXPENSE TRACKER</span>
       <h1>旅行記帳</h1>
-      <p>日圓自動換算台幣，購物也會提醒退稅門檻。</p>
     </section>
 
-    <article class="budget-card">
-      <div class="budget-top">
-        <div>
-          <span>家庭旅費預算</span>
-          <strong>${formatTwd(state.settings.budgetTwd)}</strong>
-        </div>
-        <div class="text-right">
-          <span>剩餘</span>
-          <strong class="${remaining < 0 ? "negative" : ""}">${formatTwd(remaining)}</strong>
-        </div>
-      </div>
-      <div class="progress-track"><span style="width:${progress}%"></span></div>
-      <div class="budget-bottom">
-        <span>已使用 ${Math.round(progress)}%</span>
-        <button data-action="edit-budget">修改預算</button>
-      </div>
-    </article>
-
-    <section class="expense-summary">
+    <section class="expense-summary accounts-summary">
       <article>
         <span>目前總花費</span>
         <strong>${formatTwd(totalTwd)}</strong>
-        <small>¥ ${Math.round(totalTwd / state.settings.jpyToTwd).toLocaleString("ja-JP")} 估算</small>
-      </article>
-      <article>
-        <span>預估可退</span>
-        <strong>${formatJpy(estimatedRefundJpy)}</strong>
-        <small>以 10% 稅率估算</small>
+        <small>${formatJpy(totalJpy)} · ${state.expenses.length} 筆紀錄</small>
       </article>
     </section>
 
     ${
-      reminders.length
-        ? `<section class="tax-progress-list">
-            <div class="section-title-row compact">
-              <div>
-                <span class="section-kicker">${icon("sparkle")} TAX-FREE REMINDER</span>
-                <h2>再買一點就達門檻</h2>
-              </div>
+      showStatus
+        ? `<article class="supabase-status-card">
+            ${icon(accountsStatus === "loading" ? "cloud" : "info")}
+            <div>
+              <strong>${escapeHtml(statusTitle)}</strong>
+              <span>${escapeHtml(statusMessage)}</span>
             </div>
-            ${reminders
-              .map(
-                (item) => `
-                  <article>
-                    <div><strong>${escapeHtml(item.store)}</strong><small>${escapeHtml(item.date)}</small></div>
-                    <span>再 ${formatJpy(5000 - item.total)}</span>
-                  </article>`
-              )
-              .join("")}
-          </section>`
+          </article>`
         : ""
     }
 
-    ${
-      topCategories.length
-        ? `<section class="category-summary">
-            <div class="section-title-row compact"><h2>類別統計</h2></div>
-            <div class="category-grid">
-              ${topCategories
-                .map(
-                  ([category, total]) => `
-                    <div><span>${escapeHtml(category)}</span><strong>${formatTwd(total)}</strong></div>`
-                )
-                .join("")}
-            </div>
-          </section>`
-        : ""
-    }
-
-    <div class="filter-row expense-filters">
-      ${categories
-        .map((category) => {
-          const key = category === "全部" ? "all" : category;
-          return `<button class="${state.expenseFilter === key ? "active" : ""}" data-expense-filter="${key}">${category}</button>`;
-        })
-        .join("")}
-    </div>
-
-    <section class="expense-list">
+    <section class="expense-list accounts-list">
       ${
-        filtered.length
-          ? filtered
-              .slice()
-              .reverse()
+        !showStatus && state.expenses.length
+          ? state.expenses
               .map(
                 (expense) => `
                   <article class="expense-item">
-                    <div class="expense-icon">${icon(expense.category === "交通" ? "plane" : expense.category === "購物" ? "wallet" : "receipt")}</div>
+                    <div class="expense-icon">${icon("receipt")}</div>
                     <div class="expense-main">
                       <div>
                         <strong>${escapeHtml(expense.title)}</strong>
-                        <b>${expense.currency === "JPY" ? formatJpy(expense.amount) : formatTwd(expense.amount)}</b>
+                        <b>${formatJpy(expense.amountJpy)}</b>
                       </div>
-                      <span>${escapeHtml(expense.date)} · ${escapeHtml(expense.category)} · ${escapeHtml(
-                        expense.payment
-                      )}</span>
-                      ${
-                        expense.store
-                          ? `<small>${escapeHtml(expense.store)} ${
-                              expense.taxFree ? '<em>退稅候選</em>' : ""
-                            }</small>`
-                          : ""
-                      }
+                      <span>${escapeHtml(expense.date || "未填日期")} · ${escapeHtml(
+                        accountTravelerLabel(expense.payer)
+                      )} · ${escapeHtml(expense.payment || "未填付款方式")}</span>
+                      <small>約 ${formatTwd(expense.amountTwd)}</small>
+                      <small class="expense-participants">分攤旅客：${
+                        expense.travelers.length
+                          ? expense.travelers.map((number) => `旅客 ${number}`).join("、")
+                          : "未選擇"
+                      }</small>
                     </div>
-                    <button data-action="delete-expense" data-id="${escapeHtml(expense.id)}" aria-label="刪除這筆消費">${icon(
-                      "trash"
-                    )}</button>
                   </article>`
               )
               .join("")
-          : `<div class="empty-state">
+          : !showStatus
+            ? `<div class="empty-state">
               ${icon("receipt")}
               <strong>還沒有消費紀錄</strong>
-              <p>第一筆拉麵、車票或伴手禮，就從這裡記下來。</p>
+              <p>第一筆餐飲、車票或伴手禮，就從這裡記下來。</p>
             </div>`
+            : ""
       }
     </section>
 
@@ -4567,54 +4668,77 @@ function showToast(message) {
   toastTimer = setTimeout(() => toast.classList.remove("show"), 2400);
 }
 
+function defaultAccountDate() {
+  const today = dateInTaipei();
+  return today >= TRIP_START && today <= TRIP_END ? today : TRIP_START;
+}
+
+function updateExpenseConversionPreview() {
+  const input = document.getElementById("expenseJpyInput");
+  const result = document.getElementById("expenseTwdPreview");
+  if (!input || !result) return;
+  const amountJpy = Number(input.value);
+  result.textContent =
+    input.value !== "" && Number.isFinite(amountJpy)
+      ? formatTwd(amountJpy * state.settings.jpyToTwd)
+      : "—";
+}
+
 function openExpenseForm() {
   openModal(
     `
       <header class="modal-header">
         <span class="section-kicker">NEW EXPENSE</span>
         <h2>新增記帳</h2>
-        <p>日圓會依目前匯率自動換算為台幣。</p>
       </header>
       <form id="expenseForm" class="form-stack">
         <label>
-          <span>消費內容</span>
-          <input name="title" placeholder="例如：午餐、地鐵、伴手禮" required />
+          <span>消費項目</span>
+          <input name="expenseItem" placeholder="例如：午餐、地鐵、伴手禮" required />
         </label>
-        <div class="form-grid amount-grid">
-          <label>
-            <span>幣別</span>
-            <select name="currency"><option value="JPY">JPY 日圓</option><option value="TWD">TWD 台幣</option></select>
-          </label>
-          <label><span>金額</span><input name="amount" type="number" min="0" step="1" inputmode="decimal" required /></label>
+        <label>
+          <span>收據金額（日圓）</span>
+          <input id="expenseJpyInput" name="amountJpy" type="number" min="0" step="1" inputmode="decimal" placeholder="輸入日幣金額" required />
+        </label>
+        <div class="expense-conversion-preview" aria-live="polite">
+          <span>換算金額（台幣）</span>
+          <strong id="expenseTwdPreview">—</strong>
         </div>
         <div class="form-grid">
           <label>
-            <span>類別</span>
-            <select name="category">
-              ${["餐飲", "交通", "購物", "門票", "住宿", "其他"]
-                .map((category) => `<option>${category}</option>`)
+            <span>付款人</span>
+            <select name="payer" required>
+              ${Array.from({ length: 10 }, (_, index) => index + 1)
+                .map((number) => `<option value="${number}">旅客 ${number}</option>`)
                 .join("")}
             </select>
           </label>
           <label>
             <span>付款方式</span>
-            <select name="payment"><option>現金</option><option>信用卡</option><option>交通卡</option><option>其他</option></select>
+            <select name="paymentMethod" required><option>現金</option><option>信用卡</option><option>交通卡</option><option>其他</option></select>
           </label>
         </div>
-        <label><span>日期</span><input name="date" type="date" min="${TRIP_START}" max="${TRIP_END}" value="${TRIP_START}" required /></label>
-        <label>
-          <span>店家（購物退稅提醒用）</span>
-          <input name="store" placeholder="例如：松本清 心齋橋店" />
-        </label>
-        <label class="check-label">
-          <input type="checkbox" name="taxFree" />
-          <span><strong>列為退稅候選</strong><small>同店同日未稅滿 ¥5,000 才符合基本金額門檻</small></span>
-        </label>
+        <label><span>消費日期</span><input name="expenseDate" type="date" value="${defaultAccountDate()}" required /></label>
+        <fieldset class="traveler-selector">
+          <span>旅客分攤（可複選）</span>
+          <div class="traveler-grid">
+            ${Array.from({ length: 10 }, (_, index) => index + 1)
+              .map(
+                (number) => `
+                  <label class="traveler-option">
+                    <input type="checkbox" name="traveler_${number}" />
+                    <span>${number}</span>
+                  </label>`
+              )
+              .join("")}
+          </div>
+        </fieldset>
         <button type="submit" class="primary-action">${icon("check")} 儲存這筆消費</button>
       </form>
     `,
     { label: "新增旅行消費" }
   );
+  updateExpenseConversionPreview();
 }
 
 function openTaxGuide() {
@@ -4705,14 +4829,6 @@ function openCredits() {
     `,
     { label: "照片授權資訊" }
   );
-}
-
-function deleteExpense(id) {
-  if (!window.confirm("確定刪除這筆消費紀錄嗎？")) return;
-  state.expenses = state.expenses.filter((expense) => expense.id !== id);
-  saveState();
-  render();
-  showToast("消費紀錄已刪除");
 }
 
 function exportData() {
@@ -4890,13 +5006,6 @@ document.addEventListener("click", (event) => {
     return;
   }
 
-  if (target.dataset.expenseFilter) {
-    state.expenseFilter = target.dataset.expenseFilter;
-    saveState();
-    render();
-    return;
-  }
-
   const action = target.dataset.action;
   if (!action) return;
   if (action === "close-modal" && event.target !== target && target.classList.contains("modal-backdrop")) return;
@@ -4922,14 +5031,6 @@ document.addEventListener("click", (event) => {
     },
     "show-tax-guide": openTaxGuide,
     "add-expense": openExpenseForm,
-    "delete-expense": () => deleteExpense(target.dataset.id),
-    "edit-budget": () => {
-      const value = window.prompt("請輸入家庭旅費預算（台幣）", String(state.settings.budgetTwd));
-      if (!value || Number(value) <= 0) return;
-      state.settings.budgetTwd = Number(value);
-      saveState();
-      render();
-    },
     "refresh-rate": () => refreshRate(true),
     "export-data": exportData,
     "import-data": () => document.getElementById("importFile").click(),
@@ -4947,32 +5048,63 @@ document.addEventListener("click", (event) => {
   actions[action]?.();
 });
 
-document.addEventListener("submit", (event) => {
+document.addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = event.target;
   const data = new FormData(form);
 
   if (form.id === "expenseForm") {
-    state.expenses.push({
-      id: `expense-${Date.now()}`,
-      title: String(data.get("title")).trim(),
-      currency: String(data.get("currency")),
-      amount: Number(data.get("amount")),
-      category: String(data.get("category")),
-      payment: String(data.get("payment")),
-      date: String(data.get("date")),
-      store: String(data.get("store")).trim(),
-      taxFree: data.get("taxFree") === "on"
-    });
-    saveState();
-    closeModal();
-    render();
-    showToast("消費已記下");
+    if (accountsSaving) return;
+    if (!isSupabaseAccountsConfigured()) {
+      showToast("請先建立 Accounts_JP202611 資料表");
+      return;
+    }
+
+    const amountJpy = Math.max(0, Number(data.get("amountJpy")) || 0);
+    const payload = {
+      expense_item: String(data.get("expenseItem") || "").trim(),
+      expense_date: String(data.get("expenseDate") || ""),
+      payer: String(data.get("payer") || ""),
+      payment_method: String(data.get("paymentMethod") || ""),
+      receipt_amount_jpy: amountJpy,
+      converted_amount_twd: Number(
+        (amountJpy * state.settings.jpyToTwd).toFixed(2)
+      )
+    };
+    for (let travelerNumber = 1; travelerNumber <= 10; travelerNumber += 1) {
+      payload[`traveler_${travelerNumber}`] =
+        data.get(`traveler_${travelerNumber}`) === "on";
+    }
+
+    const submitButton = form.querySelector('button[type="submit"]');
+    accountsSaving = true;
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.textContent = "正在儲存…";
+    }
+
+    try {
+      await insertAccountExpense(payload);
+      closeModal();
+      await loadAccounts();
+      showToast("消費已存入 Supabase");
+    } catch (error) {
+      console.error("Account expense insert failed", error);
+      showToast("儲存失敗，請檢查資料表與 RLS");
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.innerHTML = `${icon("check")} 儲存這筆消費`;
+        hydrateIcons(submitButton);
+      }
+    } finally {
+      accountsSaving = false;
+    }
   }
 });
 
 document.addEventListener("input", (event) => {
   if (event.target.id === "currencyJpyInput") updateCurrencyConverter();
+  if (event.target.id === "expenseJpyInput") updateExpenseConversionPreview();
 });
 
 document.getElementById("importFile").addEventListener("change", (event) => {
@@ -4998,6 +5130,7 @@ document.addEventListener("visibilitychange", () => {
   if (!document.hidden) {
     refreshRate(false);
     refreshWeather(false);
+    if (state.view === "expenses") loadAccounts();
   }
 });
 
@@ -5007,6 +5140,7 @@ render();
 loadItinerary();
 loadReferenceFilms();
 loadHotBrands();
+loadAccounts();
 refreshRate(false);
 refreshWeather();
 window.setInterval(() => refreshRate(false), 5 * 60 * 1000);
