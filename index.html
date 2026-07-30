@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Build: 2026-07-30-keihan-ios-date-width-v33 -->
+<!-- Build: 2026-07-30-keihan-ios-date-theme-v34 -->
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
@@ -2208,7 +2208,7 @@ img {
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 13px;
-  background: #fff;
+  background: var(--card);
   box-sizing: border-box;
 }
 
@@ -2225,7 +2225,10 @@ img {
   overflow: hidden;
   border: 0 !important;
   border-radius: 0;
-  background: transparent;
+  background: var(--card) !important;
+  color: var(--ink);
+  -webkit-text-fill-color: var(--ink);
+  color-scheme: dark;
   box-sizing: border-box;
   -webkit-appearance: none;
   appearance: none;
@@ -2233,7 +2236,12 @@ img {
 
 .date-input-shell input[type="date"]::-webkit-date-and-time-value {
   min-width: 0;
+  color: var(--ink);
   text-align: left;
+}
+
+.date-input-shell input[type="date"]::-webkit-datetime-edit {
+  color: var(--ink);
 }
 
 .date-input-shell:focus-within {
@@ -3397,7 +3405,7 @@ let dayCoverTimer;
 let toastTimer;
 let modalPageScrollY = 0;
 let itineraryDaySummariesByDate = new Map();
-const BUILD_VERSION = "2026-07-30-keihan-ios-date-width-v33";
+const BUILD_VERSION = "2026-07-30-keihan-ios-date-theme-v34";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
