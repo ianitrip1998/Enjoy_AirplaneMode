@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Build: 2026-07-30-keihan-account-twd-splits-v32 -->
+<!-- Build: 2026-07-30-keihan-ios-date-width-v33 -->
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
@@ -2191,14 +2191,54 @@ img {
   resize: vertical;
 }
 
-.form-stack input[type="date"] {
+.date-field {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.date-input-shell {
+  position: relative;
   display: block;
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  inline-size: 100%;
-  min-inline-size: 0;
+  height: 47px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: #fff;
   box-sizing: border-box;
+}
+
+.date-input-shell input[type="date"] {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  height: 100%;
+  min-height: 0;
+  padding: 12px 13px;
+  overflow: hidden;
+  border: 0 !important;
+  border-radius: 0;
+  background: transparent;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.date-input-shell input[type="date"]::-webkit-date-and-time-value {
+  min-width: 0;
+  text-align: left;
+}
+
+.date-input-shell:focus-within {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(179, 138, 66, 0.12);
 }
 
 .form-stack input:focus,
@@ -3357,7 +3397,7 @@ let dayCoverTimer;
 let toastTimer;
 let modalPageScrollY = 0;
 let itineraryDaySummariesByDate = new Map();
-const BUILD_VERSION = "2026-07-30-keihan-account-twd-splits-v32";
+const BUILD_VERSION = "2026-07-30-keihan-ios-date-width-v33";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -4803,7 +4843,12 @@ function openExpenseForm() {
             <select name="paymentMethod" required><option>現金</option><option>信用卡</option><option>交通卡</option><option>其他</option></select>
           </label>
         </div>
-        <label><span>消費日期</span><input name="expenseDate" type="date" value="${defaultAccountDate()}" required /></label>
+        <label class="date-field">
+          <span>消費日期</span>
+          <span class="date-input-shell">
+            <input name="expenseDate" type="date" value="${defaultAccountDate()}" required />
+          </span>
+        </label>
         <fieldset class="traveler-selector">
           <span>旅客分攤（可複選）</span>
           <div class="traveler-grid">
