@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Build: 2026-07-30-keihan-itinerary-columns-cleanup-v24 -->
+<!-- Build: 2026-07-30-keihan-final-day-replay-v25 -->
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
@@ -3157,7 +3157,7 @@ let instagramEmbedScriptPromise;
 let dayCoverTimer;
 let toastTimer;
 let itineraryDaySummariesByDate = new Map();
-const BUILD_VERSION = "2026-07-30-keihan-itinerary-columns-cleanup-v24";
+const BUILD_VERSION = "2026-07-30-keihan-final-day-replay-v25";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -3959,6 +3959,23 @@ function renderItinerary() {
   const directDaySummary = itineraryDaySummariesByDate.get(String(day.date));
   const coverCity = directDaySummary?.city || day.city || `DAY ${day.day}`;
   const coverTitle = directDaySummary?.title || day.title || "今日旅行散策";
+  const finalDayNumber = Math.max(
+    ...state.itinerary.map((item) => Number(item.day) || 0)
+  );
+  const replayImages =
+    Number(day.day) === finalDayNumber && day.images.length === 0
+      ? state.itinerary
+          .filter((item) => Number(item.day) < finalDayNumber)
+          .flatMap((item) => item.images)
+      : [];
+  const coverImages = [
+    ...new Map(
+      (day.images.length ? day.images : replayImages).map((photo) => [
+        photo.src,
+        photo
+      ])
+    ).values()
+  ];
   return `
     ${header}
 
@@ -3976,7 +3993,7 @@ function renderItinerary() {
 
     <section class="day-cover">
       <div class="day-cover-placeholder">${icon("camera")}</div>
-      ${day.images
+      ${coverImages
         .map(
           (photo, index) =>
             `<img
