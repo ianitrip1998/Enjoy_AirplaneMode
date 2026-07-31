@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Build: 2026-07-31-keihan-persist-traveler-session-v37 -->
+<!-- Build: 2026-07-31-keihan-person-settlement-v38 -->
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
@@ -1394,6 +1394,125 @@ img {
   min-height: 105px;
 }
 
+.settlement-section {
+  padding: 0 14px 86px;
+}
+
+.settlement-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 14px;
+}
+
+.settlement-heading > div {
+  display: grid;
+  gap: 4px;
+}
+
+.settlement-heading span {
+  color: var(--gold-deep);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.18em;
+}
+
+.settlement-heading h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 19px;
+}
+
+.settlement-heading small {
+  color: var(--ink-soft);
+  font-size: 9px;
+  text-align: right;
+}
+
+.settlement-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.settlement-card {
+  display: grid;
+  min-width: 0;
+  min-height: 166px;
+  align-content: start;
+  justify-items: center;
+  padding: 17px 12px 15px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--card);
+  box-shadow: var(--shadow-soft);
+  text-align: center;
+}
+
+.settlement-person-icon {
+  display: grid;
+  width: 54px;
+  height: 54px;
+  place-items: center;
+  margin-bottom: 10px;
+  border-radius: 18px;
+  background: var(--gold-soft);
+  color: var(--gold-deep);
+}
+
+.settlement-person-icon .ui-icon {
+  width: 31px;
+  height: 31px;
+  font-size: 31px;
+}
+
+.settlement-card h3 {
+  overflow: hidden;
+  width: 100%;
+  margin: 0;
+  color: var(--ink);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settlement-card span {
+  margin-top: 5px;
+  color: var(--ink-soft);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.settlement-card strong {
+  margin-top: 7px;
+  color: var(--ink);
+  font-family: Georgia, "Times New Roman", "Noto Serif TC", serif;
+  font-size: 18px;
+}
+
+.settlement-card.is-owed .settlement-person-icon {
+  background: rgba(197, 160, 101, 0.18);
+  color: var(--gold);
+}
+
+.settlement-card.is-owed strong {
+  color: var(--gold-deep);
+}
+
+.settlement-card.owes .settlement-person-icon {
+  background: rgba(190, 114, 89, 0.16);
+  color: #c7846d;
+}
+
+.settlement-card.owes strong {
+  color: #d59a84;
+}
+
+.settlement-card.settled {
+  opacity: 0.78;
+}
+
 .category-summary,
 .tax-progress-list {
   margin: 0 14px 14px;
@@ -2040,13 +2159,19 @@ img {
   margin-bottom: -36px;
   margin-left: auto;
   place-items: center;
+  padding: 0;
   border-radius: 50%;
   background: #eeebe5;
+  line-height: 0;
 }
 
 .modal-close .ui-icon {
+  display: block;
+  flex: 0 0 auto;
   width: 17px;
   height: 17px;
+  margin: 0;
+  transform: none;
 }
 
 .modal-header {
@@ -2300,63 +2425,6 @@ img {
   color: var(--ink-soft);
   font-size: 9px;
   line-height: 1.45;
-}
-
-.expense-conversion-preview {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: 58px;
-  padding: 13px 15px;
-  border: 1px solid rgba(197, 160, 101, 0.38);
-  border-radius: 15px;
-  background: var(--brown);
-}
-
-.expense-conversion-preview span {
-  color: rgba(247, 239, 229, 0.7);
-  font-size: 10px;
-  font-weight: 750;
-}
-
-.expense-conversion-preview strong {
-  color: var(--ink);
-  font-family: Georgia, "Times New Roman", "Noto Serif TC", serif;
-  font-size: 21px;
-}
-
-.expense-share-preview {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: 58px;
-  padding: 13px 15px;
-  border: 1px solid var(--line);
-  border-radius: 15px;
-  background: var(--card);
-}
-
-.expense-share-preview > div {
-  display: grid;
-  gap: 4px;
-}
-
-.expense-share-preview span,
-.expense-share-preview strong {
-  color: var(--ink-soft);
-  font-size: 10px;
-}
-
-.expense-share-preview strong {
-  color: var(--ink);
-  font-size: 12px;
-}
-
-.expense-share-preview b {
-  color: var(--gold-deep);
-  font-size: 14px;
 }
 
 .traveler-selector {
@@ -3102,7 +3170,8 @@ img {
   .section-stack,
   .timeline-list,
   .photo-grid,
-  .expense-list {
+  .expense-list,
+  .settlement-section {
     padding-right: 24px;
     padding-left: 24px;
   }
@@ -3381,6 +3450,7 @@ const ICONS = {
   navReferences: "simple-icons:radarr",
   navBrands: "mingcute:radar-2-fill",
   navExpenses: "streamline-ultimate:cashless-payment-online-statement-monitor-bold",
+  settlementPerson: "ic:round-person-pin",
   settings: "solar:settings-linear",
   plane: "mdi:airplane",
   pin: "solar:map-point-linear",
@@ -3617,7 +3687,7 @@ let dayCoverTimer;
 let toastTimer;
 let modalPageScrollY = 0;
 let itineraryDaySummariesByDate = new Map();
-const BUILD_VERSION = "2026-07-31-keihan-persist-traveler-session-v37";
+const BUILD_VERSION = "2026-07-31-keihan-person-settlement-v38";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -4961,22 +5031,69 @@ function renderBrands() {
   `;
 }
 
-function expenseTotals() {
-  return state.expenses.reduce(
-    (totals, expense) => ({
-      totalTwd: totals.totalTwd + (Number(expense.amountTwd) || 0),
-      totalJpy: totals.totalJpy + (Number(expense.amountJpy) || 0)
-    }),
-    { totalTwd: 0, totalJpy: 0 }
+function accountPayerNumber(value) {
+  const normalized = String(value || "").trim();
+  if (!normalized) return null;
+
+  const bindingNumber = travelerNumberFromBinding(normalized);
+  if (bindingNumber) return bindingNumber;
+  if (/^(?:[1-9]|10)$/.test(normalized)) return Number(normalized);
+
+  const namedTraveler = registeredTravelerSlots().find(
+    (entry) => entry.name === normalized
   );
+  return namedTraveler?.number || null;
 }
 
-function accountTravelerLabel(value) {
-  const normalized = String(value || "").trim();
-  if (!normalized) return "未填寫";
-  return /^\d+$/.test(normalized)
-    ? travelerNameForNumber(Number(normalized))
-    : normalized;
+function travelerShareAmount(expense, travelerNumber) {
+  const share = expense.travelerShares.find(
+    (entry) => entry.number === travelerNumber
+  );
+  const amount = Number(share?.amount);
+  return Number.isFinite(amount) && amount > 0 ? amount : 0;
+}
+
+function calculateCurrentTravelerSettlements() {
+  const currentTravelerNumber = travelerNumberFromBinding(
+    currentTraveler?.binding
+  );
+  if (!currentTravelerNumber) return [];
+
+  return registeredTravelerSlots()
+    .filter((traveler) => traveler.number !== currentTravelerNumber)
+    .map((traveler) => {
+      let currentOwesTraveler = 0;
+      let travelerOwesCurrent = 0;
+
+      state.expenses.forEach((expense) => {
+        const payerNumber = accountPayerNumber(expense.payer);
+
+        if (payerNumber === traveler.number) {
+          currentOwesTraveler += travelerShareAmount(
+            expense,
+            currentTravelerNumber
+          );
+        }
+
+        if (payerNumber === currentTravelerNumber) {
+          travelerOwesCurrent += travelerShareAmount(expense, traveler.number);
+        }
+      });
+
+      const netAmount = Math.round(currentOwesTraveler - travelerOwesCurrent);
+      return {
+        ...traveler,
+        amount: Math.abs(netAmount),
+        direction:
+          netAmount > 0 ? "owes" : netAmount < 0 ? "is-owed" : "settled",
+        label:
+          netAmount > 0
+            ? "你欠他"
+            : netAmount < 0
+              ? "他欠你"
+              : "目前無欠款"
+      };
+    });
 }
 
 function renderExpenses() {
@@ -5038,7 +5155,6 @@ function renderExpenses() {
     `;
   }
 
-  const { totalTwd, totalJpy } = expenseTotals();
   const statusMessages = {
     loading: ["正在讀取旅行記帳", "正從 Supabase 取得最新消費紀錄。"],
     config: ["尚未設定記帳資料表", accountsError],
@@ -5046,19 +5162,13 @@ function renderExpenses() {
   };
   const showStatus = ["loading", "config", "error"].includes(accountsStatus);
   const [statusTitle, statusMessage] = statusMessages[accountsStatus] || [];
+  const settlements = showStatus ? [] : calculateCurrentTravelerSettlements();
+  const currentTravelerName = String(currentTraveler?.traveler || "").trim();
 
   return `
     <section class="page-header">
       <span class="section-kicker">EXPENSE TRACKER</span>
       <h1>旅行記帳</h1>
-    </section>
-
-    <section class="expense-summary accounts-summary">
-      <article>
-        <span>目前總花費</span>
-        <strong>${formatTwd(totalTwd)}</strong>
-        <small>${formatJpy(totalJpy)} · ${state.expenses.length} 筆紀錄</small>
-      </article>
     </section>
 
     ${
@@ -5073,43 +5183,41 @@ function renderExpenses() {
         : ""
     }
 
-    <section class="expense-list accounts-list">
+    <section class="settlement-section" aria-label="旅伴欠款結算">
       ${
-        !showStatus && state.expenses.length
-          ? state.expenses
+        !showStatus
+          ? `
+            <div class="settlement-heading">
+              <div>
+                <span>SETTLEMENT</span>
+                <h2>我的旅伴結算</h2>
+              </div>
+              <small>${escapeHtml(currentTravelerName)}<br />雙向欠款已抵銷</small>
+            </div>
+            ${
+              settlements.length
+                ? `<div class="settlement-grid">
+                  ${settlements
               .map(
-                (expense) => `
-                  <article class="expense-item">
-                    <div class="expense-icon">${icon("receipt")}</div>
-                    <div class="expense-main">
-                      <div>
-                        <strong>${escapeHtml(expense.title)}</strong>
-                        <b>${formatJpy(expense.amountJpy)}</b>
-                      </div>
-                      <span>${escapeHtml(expense.date || "未填日期")} · ${escapeHtml(
-                        accountTravelerLabel(expense.payer)
-                      )} · ${escapeHtml(expense.payment || "未填付款方式")}</span>
-                      <small>約 ${formatTwd(expense.amountTwd)}</small>
-                      <small class="expense-participants">${
-                        expense.travelerShares.length
-                          ? `分攤旅客：${expense.travelerShares
-                              .map((share) => travelerNameForNumber(share.number))
-                            .join("、")} · 每人 ${formatTwd(
-                              expense.travelerShares[0].amount
-                            )}`
-                          : "尚未設定分攤對象"
-                      }</small>
+                (settlement) => `
+                  <article class="settlement-card ${settlement.direction}">
+                    <div class="settlement-person-icon" aria-hidden="true">
+                      ${icon("settlementPerson")}
                     </div>
+                    <h3>${escapeHtml(settlement.name)}</h3>
+                    <span>${escapeHtml(settlement.label)}</span>
+                    <strong>${formatTwd(settlement.amount)}</strong>
                   </article>`
               )
-              .join("")
-          : !showStatus
-            ? `<div class="empty-state">
-              ${icon("receipt")}
-              <strong>還沒有消費紀錄</strong>
-              <p>第一筆餐飲、車票或伴手禮，就從這裡記下來。</p>
-            </div>`
-            : ""
+              .join("")}
+                </div>`
+                : `<div class="empty-state">
+                    ${icon("settlementPerson")}
+                    <strong>尚無其他已登記旅伴</strong>
+                    <p>其他旅伴完成旅行登記後，人物結算會顯示在這裡。</p>
+                  </div>`
+            }`
+          : ""
       }
     </section>
 
@@ -5256,35 +5364,6 @@ function defaultAccountDate() {
   return today >= TRIP_START && today <= TRIP_END ? today : TRIP_START;
 }
 
-function updateExpenseConversionPreview() {
-  const input = document.getElementById("expenseJpyInput");
-  const result = document.getElementById("expenseTwdPreview");
-  const shareCount = document.getElementById("expenseShareCount");
-  const shareAmount = document.getElementById("expenseShareAmount");
-  if (!input || !result) return;
-  const amountJpy = Number(input.value);
-  result.textContent =
-    input.value !== "" && Number.isFinite(amountJpy)
-      ? formatTwd(amountJpy * state.settings.jpyToTwd)
-      : "—";
-
-  const selectedTravelers = document.querySelectorAll(
-    '#expenseForm input[name^="traveler_"]:checked'
-  ).length;
-  if (shareCount) {
-    shareCount.textContent = selectedTravelers
-      ? `已選 ${selectedTravelers} 人`
-      : "尚未選擇";
-  }
-  if (shareAmount) {
-    const convertedAmountTwd = amountJpy * state.settings.jpyToTwd;
-    shareAmount.textContent =
-      selectedTravelers && input.value !== "" && Number.isFinite(amountJpy)
-        ? `每人 ${formatTwd(convertedAmountTwd / selectedTravelers)}`
-        : "每人 —";
-  }
-}
-
 function openExpenseForm() {
   if (!currentTraveler) {
     if (travelerLinkStatus === "unregistered") {
@@ -5318,10 +5397,6 @@ function openExpenseForm() {
           <span>收據金額（日圓）</span>
           <input id="expenseJpyInput" name="amountJpy" type="number" min="0" step="1" inputmode="decimal" placeholder="輸入日幣金額" required />
         </label>
-        <div class="expense-conversion-preview" aria-live="polite">
-          <span>換算金額（台幣）</span>
-          <strong id="expenseTwdPreview">—</strong>
-        </div>
         <div class="form-grid">
           <label>
             <span>付款人</span>
@@ -5364,19 +5439,11 @@ function openExpenseForm() {
               .join("")}
           </div>
         </fieldset>
-        <div class="expense-share-preview" aria-live="polite">
-          <div>
-            <span>分攤結果</span>
-            <strong id="expenseShareCount">尚未選擇</strong>
-          </div>
-          <b id="expenseShareAmount">每人 —</b>
-        </div>
         <button type="submit" class="primary-action">${icon("check")} 儲存這筆消費</button>
       </form>
     `,
     { label: "新增旅行消費" }
   );
-  updateExpenseConversionPreview();
 }
 
 function openTaxGuide() {
@@ -5809,12 +5876,6 @@ document.addEventListener("submit", async (event) => {
 
 document.addEventListener("input", (event) => {
   if (event.target.id === "currencyJpyInput") updateCurrencyConverter();
-  if (
-    event.target.id === "expenseJpyInput" ||
-    event.target.matches?.('#expenseForm input[name^="traveler_"]')
-  ) {
-    updateExpenseConversionPreview();
-  }
 });
 
 document.getElementById("importFile").addEventListener("change", (event) => {
