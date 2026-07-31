@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Build: 2026-07-31-keihan-line-traveler-v35 -->
+<!-- Build: 2026-07-31-keihan-manual-line-register-v36 -->
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
@@ -2458,25 +2458,61 @@ img {
   font-weight: 800;
 }
 
-.traveler-registration-note {
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  margin-top: 16px;
-  padding: 13px;
-  border: 1px solid rgba(197, 160, 101, 0.35);
-  border-radius: 15px;
-  background: var(--gold-soft);
-  color: var(--ink-soft);
-  font-size: 10px;
-  line-height: 1.6;
+.traveler-access-gate {
+  display: grid;
+  justify-items: center;
+  gap: 11px;
+  margin: 0 14px;
+  padding: 30px 22px;
+  border: 1px solid var(--line);
+  border-radius: 25px;
+  background: var(--card);
+  box-shadow: var(--shadow-soft);
+  text-align: center;
 }
 
-.traveler-registration-note .ui-icon {
-  flex: 0 0 auto;
-  width: 18px;
-  height: 18px;
-  color: var(--gold-deep);
+.traveler-access-icon {
+  display: grid;
+  width: 58px;
+  height: 58px;
+  place-items: center;
+  border-radius: 18px;
+  background: var(--gold);
+  color: var(--paper);
+}
+
+.traveler-access-icon .ui-icon {
+  width: 29px;
+  height: 29px;
+}
+
+.traveler-access-gate h2 {
+  margin: 5px 0 0;
+  color: var(--ink);
+  font-size: 20px;
+}
+
+.traveler-access-gate p {
+  max-width: 310px;
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.traveler-access-gate .traveler-link-action {
+  min-width: 150px;
+  min-height: 46px;
+  margin-top: 6px;
+  border: 0;
+  background: var(--gold);
+  color: var(--paper);
+  font-size: 12px;
+}
+
+.traveler-access-gate .traveler-link-action:disabled {
+  cursor: wait;
+  opacity: 0.62;
 }
 
 @media (max-width: 699px) {
@@ -3244,6 +3280,38 @@ const LINE_TRAVELER = {
   liffId: "2010914364-7gc4LrWK",
   channelId: "2010914364"
 };
+const TRAVELER_LINK_RETURN_KEY = "jp202611-line-login-pending";
+
+function isTravelerLoginReturn() {
+  const query = new URLSearchParams(window.location.search);
+  return (
+    sessionStorage.getItem(TRAVELER_LINK_RETURN_KEY) === "1" ||
+    query.has("liff.state") ||
+    (query.has("code") && query.has("state"))
+  );
+}
+
+function travelerLoginRedirectUri() {
+  const redirect = new URL(window.location.href);
+  [
+    "code",
+    "state",
+    "liff.state",
+    "friendship_status_changed",
+    "error",
+    "error_description"
+  ].forEach((parameter) => redirect.searchParams.delete(parameter));
+  redirect.hash = "";
+  return redirect.href;
+}
+
+function clearTravelerLoginReturn() {
+  sessionStorage.removeItem(TRAVELER_LINK_RETURN_KEY);
+  const cleanUrl = travelerLoginRedirectUri();
+  if (cleanUrl !== window.location.href) {
+    window.history.replaceState(window.history.state, "", cleanUrl);
+  }
+}
 
 const ICONS = {
   home: "solar:home-2-linear",
@@ -3492,7 +3560,7 @@ let dayCoverTimer;
 let toastTimer;
 let modalPageScrollY = 0;
 let itineraryDaySummariesByDate = new Map();
-const BUILD_VERSION = "2026-07-31-keihan-line-traveler-v35";
+const BUILD_VERSION = "2026-07-31-keihan-manual-line-register-v36";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -4183,7 +4251,7 @@ function openTravelerRegistration() {
     return;
   }
   if (travelerLinkStatus !== "unregistered") {
-    initializeTravelerLink({ force: true });
+    initializeTravelerLink({ force: true, allowLogin: true });
     return;
   }
   if (document.getElementById("travelerRegistrationForm")) return;
@@ -4195,10 +4263,6 @@ function openTravelerRegistration() {
         <h2>旅行登記</h2>
         <p>第一次使用旅行帳本，請先完成同行者身分登記。</p>
       </header>
-      <div class="traveler-registration-note">
-        ${icon("info")}
-        <span>系統會依登記順序自動分配 traveler_1 至 traveler_10；旅行代號只用於本次驗證，不會寫入資料庫。</span>
-      </div>
       <form id="travelerRegistrationForm" class="form-stack">
         <label>
           <span>姓名</span>
@@ -4215,7 +4279,7 @@ function openTravelerRegistration() {
   );
 }
 
-async function initializeTravelerLink({ force = false } = {}) {
+async function initializeTravelerLink({ force = false, allowLogin = false } = {}) {
   if (travelerLinkPromise) return travelerLinkPromise;
   if (!force && travelerLinkStatus === "registered") return;
 
@@ -4230,20 +4294,34 @@ async function initializeTravelerLink({ force = false } = {}) {
       await liff.init({ liffId: LINE_TRAVELER.liffId });
 
       if (!liff.isLoggedIn()) {
+        if (!allowLogin) {
+          clearTravelerLoginReturn();
+          travelerLinkStatus = "idle";
+          if (state.view === "expenses") render();
+          return;
+        }
+
         travelerLinkStatus = "login";
+        sessionStorage.setItem(TRAVELER_LINK_RETURN_KEY, "1");
         if (state.view === "expenses") render();
-        liff.login({ redirectUri: window.location.href });
+        liff.login({ redirectUri: travelerLoginRedirectUri() });
         return;
       }
 
       const result = await callTravelerFunction("lookup");
       applyTravelerLinkResult(result);
-      if (state.view === "expenses") render();
+      clearTravelerLoginReturn();
+      if (currentTraveler) {
+        await loadAccounts();
+      } else if (state.view === "expenses") {
+        render();
+      }
       if (!currentTraveler && state.view === "expenses") {
         window.setTimeout(openTravelerRegistration, 80);
       }
     } catch (error) {
       console.error("LINE traveler link failed", error);
+      clearTravelerLoginReturn();
       travelerLinkStatus = "error";
       travelerLinkError = travelerLinkErrorMessage(error);
       if (state.view === "expenses") render();
@@ -4840,6 +4918,64 @@ function accountTravelerLabel(value) {
 }
 
 function renderExpenses() {
+  if (travelerLinkStatus !== "registered") {
+    const gateStates = {
+      idle: {
+        title: "先完成旅行登記",
+        message: "點擊旅行登記，使用 LINE 帳號確認同行身分後即可進入旅行帳本。",
+        action: "open-traveler-registration",
+        button: "旅行登記",
+        pending: false
+      },
+      loading: {
+        title: "正在聯動 LINE 帳號",
+        message: "正在確認這個 LINE 帳號是否已完成同行者登記。",
+        action: "",
+        button: "正在確認…",
+        pending: true
+      },
+      login: {
+        title: "正在前往 LINE Login",
+        message: "完成 LINE 登入後，系統會自動帶你回到旅行帳本。",
+        action: "",
+        button: "正在開啟…",
+        pending: true
+      },
+      unregistered: {
+        title: "完成同行者資料",
+        message: "這是此 LINE 帳號第一次登入，請填寫姓名與旅行代號。",
+        action: "open-traveler-registration",
+        button: "旅行登記",
+        pending: false
+      },
+      error: {
+        title: "LINE 帳號聯動失敗",
+        message: travelerLinkError,
+        action: "retry-traveler-link",
+        button: "重新聯動",
+        pending: false
+      }
+    };
+    const gate = gateStates[travelerLinkStatus] || gateStates.idle;
+
+    return `
+      <section class="page-header">
+        <span class="section-kicker">EXPENSE TRACKER</span>
+        <h1>旅行記帳</h1>
+      </section>
+      <section class="traveler-access-gate" aria-live="polite">
+        <div class="traveler-access-icon">${icon("navExpenses")}</div>
+        <h2>${escapeHtml(gate.title)}</h2>
+        <p>${escapeHtml(gate.message)}</p>
+        <button
+          class="traveler-link-action"
+          ${gate.action ? `data-action="${gate.action}"` : ""}
+          ${gate.pending ? "disabled" : ""}
+        >${escapeHtml(gate.button)}</button>
+      </section>
+    `;
+  }
+
   const { totalTwd, totalJpy } = expenseTotals();
   const statusMessages = {
     loading: ["正在讀取旅行記帳", "正從 Supabase 取得最新消費紀錄。"],
@@ -4848,41 +4984,12 @@ function renderExpenses() {
   };
   const showStatus = ["loading", "config", "error"].includes(accountsStatus);
   const [statusTitle, statusMessage] = statusMessages[accountsStatus] || [];
-  const travelerStatusMessages = {
-    idle: ["正在準備 LINE 聯動", "即將確認目前使用的 LINE 帳號。"],
-    loading: ["正在聯動 LINE 帳號", "正在讀取這個帳號的旅行者登記。"],
-    login: ["正在開啟 LINE 登入", "完成 LINE 登入後會自動回到旅行帳本。"],
-    unregistered: ["尚未完成旅行登記", "輸入姓名與旅行代號後即可參與記帳。"],
-    error: ["LINE 帳號聯動失敗", travelerLinkError]
-  };
-  const showTravelerStatus = travelerLinkStatus !== "registered";
-  const [travelerStatusTitle, travelerStatusMessage] =
-    travelerStatusMessages[travelerLinkStatus] || travelerStatusMessages.idle;
 
   return `
     <section class="page-header">
       <span class="section-kicker">EXPENSE TRACKER</span>
       <h1>旅行記帳</h1>
     </section>
-
-    ${
-      showTravelerStatus
-        ? `<article class="supabase-status-card traveler-link-card">
-            ${icon(travelerLinkStatus === "loading" ? "cloud" : "info")}
-            <div>
-              <strong>${escapeHtml(travelerStatusTitle)}</strong>
-              <span>${escapeHtml(travelerStatusMessage)}</span>
-              ${
-                travelerLinkStatus === "unregistered"
-                  ? `<button class="traveler-link-action" data-action="open-traveler-registration">完成旅行登記</button>`
-                  : travelerLinkStatus === "error"
-                    ? `<button class="traveler-link-action" data-action="retry-traveler-link">重新聯動</button>`
-                    : ""
-              }
-            </div>
-          </article>`
-        : ""
-    }
 
     <section class="expense-summary accounts-summary">
       <article>
@@ -4944,11 +5051,7 @@ function renderExpenses() {
       }
     </section>
 
-    <button class="floating-add" data-action="${
-      currentTraveler ? "add-expense" : "open-traveler-registration"
-    }">${icon(currentTraveler ? "plus" : "info")} ${
-      currentTraveler ? "新增記帳" : "完成旅行登記"
-    }</button>
+    <button class="floating-add" data-action="add-expense">${icon("plus")} 新增記帳</button>
   `;
 }
 
@@ -5125,7 +5228,7 @@ function openExpenseForm() {
     if (travelerLinkStatus === "unregistered") {
       openTravelerRegistration();
     } else {
-      initializeTravelerLink({ force: true });
+      initializeTravelerLink({ force: true, allowLogin: true });
     }
     return;
   }
@@ -5134,7 +5237,7 @@ function openExpenseForm() {
   const currentTravelerNumber = travelerNumberFromBinding(currentTraveler.binding);
   if (!travelerSlots.length) {
     showToast("目前讀不到同行者名單，請重新聯動 LINE 帳號");
-    initializeTravelerLink({ force: true });
+    initializeTravelerLink({ force: true, allowLogin: true });
     return;
   }
 
@@ -5469,7 +5572,6 @@ document.addEventListener("click", (event) => {
     saveState();
     render();
     if (isViewChange) resetViewScrollPosition();
-    if (nextView === "expenses") initializeTravelerLink();
     return;
   }
 
@@ -5499,7 +5601,8 @@ document.addEventListener("click", (event) => {
     "refresh-weather-location": () => refreshWeather(true),
     "close-modal": closeModal,
     "open-traveler-registration": openTravelerRegistration,
-    "retry-traveler-link": () => initializeTravelerLink({ force: true }),
+    "retry-traveler-link": () =>
+      initializeTravelerLink({ force: true, allowLogin: true }),
     "toggle-flight": () => {
       state.flightIndex = state.flightIndex === 0 ? 1 : 0;
       saveState();
@@ -5668,9 +5771,8 @@ document.addEventListener("visibilitychange", () => {
   if (!document.hidden) {
     refreshRate(false);
     refreshWeather(false);
-    if (state.view === "expenses") {
+    if (state.view === "expenses" && travelerLinkStatus === "registered") {
       loadAccounts();
-      initializeTravelerLink({ force: true });
     }
   }
 });
@@ -5681,8 +5783,12 @@ render();
 loadItinerary();
 loadReferenceFilms();
 loadHotBrands();
-loadAccounts();
-if (state.view === "expenses") initializeTravelerLink();
+if (
+  state.view === "expenses" &&
+  isTravelerLoginReturn()
+) {
+  initializeTravelerLink({ force: true });
+}
 refreshRate(false);
 refreshWeather();
 window.setInterval(() => refreshRate(false), 5 * 60 * 1000);
