@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Build: 2026-07-31-keihan-manual-line-register-v36 -->
+<!-- Build: 2026-07-31-keihan-persist-traveler-session-v37 -->
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
@@ -3281,6 +3281,7 @@ const LINE_TRAVELER = {
   channelId: "2010914364"
 };
 const TRAVELER_LINK_RETURN_KEY = "jp202611-line-login-pending";
+const TRAVELER_SESSION_KEY = "jp202611-traveler-session-v1";
 
 function isTravelerLoginReturn() {
   const query = new URLSearchParams(window.location.search);
@@ -3310,6 +3311,61 @@ function clearTravelerLoginReturn() {
   const cleanUrl = travelerLoginRedirectUri();
   if (cleanUrl !== window.location.href) {
     window.history.replaceState(window.history.state, "", cleanUrl);
+  }
+}
+
+function normalizeTravelerSessionEntry(entry) {
+  const traveler = String(entry?.traveler || "").trim();
+  const binding = String(entry?.binding || "").trim();
+  if (!traveler || !/^traveler_([1-9]|10)$/.test(binding)) return null;
+  return { traveler, binding };
+}
+
+function loadTravelerSession() {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(TRAVELER_SESSION_KEY));
+    const savedCurrentTraveler = normalizeTravelerSessionEntry(
+      saved?.currentTraveler
+    );
+    if (!savedCurrentTraveler) return null;
+
+    const savedDirectory = Array.isArray(saved?.directory)
+      ? saved.directory.map(normalizeTravelerSessionEntry).filter(Boolean)
+      : [];
+
+    return {
+      currentTraveler: savedCurrentTraveler,
+      directory: savedDirectory
+    };
+  } catch {
+    return null;
+  }
+}
+
+function persistTravelerSession() {
+  try {
+    if (!currentTraveler) {
+      sessionStorage.removeItem(TRAVELER_SESSION_KEY);
+      return;
+    }
+
+    sessionStorage.setItem(
+      TRAVELER_SESSION_KEY,
+      JSON.stringify({
+        currentTraveler,
+        directory: travelerDirectory
+      })
+    );
+  } catch (error) {
+    console.warn("Unable to persist traveler session", error);
+  }
+}
+
+function clearTravelerSession() {
+  try {
+    sessionStorage.removeItem(TRAVELER_SESSION_KEY);
+  } catch (error) {
+    console.warn("Unable to clear traveler session", error);
   }
 }
 
@@ -3548,10 +3604,11 @@ let hotBrandsError = "";
 let accountsStatus = "loading";
 let accountsError = "";
 let accountsSaving = false;
-let travelerLinkStatus = "idle";
+const savedTravelerSession = loadTravelerSession();
+let travelerLinkStatus = savedTravelerSession ? "registered" : "idle";
 let travelerLinkError = "";
-let travelerDirectory = [];
-let currentTraveler = null;
+let travelerDirectory = savedTravelerSession?.directory || [];
+let currentTraveler = savedTravelerSession?.currentTraveler || null;
 let travelerLinkPromise;
 let liffSdkPromise;
 let referenceEmbedObserver;
@@ -3560,7 +3617,7 @@ let dayCoverTimer;
 let toastTimer;
 let modalPageScrollY = 0;
 let itineraryDaySummariesByDate = new Map();
-const BUILD_VERSION = "2026-07-31-keihan-manual-line-register-v36";
+const BUILD_VERSION = "2026-07-31-keihan-persist-traveler-session-v37";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -4230,6 +4287,11 @@ function applyTravelerLinkResult(result) {
   travelerDirectory = Array.isArray(result?.directory) ? result.directory : [];
   travelerLinkStatus = currentTraveler ? "registered" : "unregistered";
   travelerLinkError = "";
+  if (currentTraveler) {
+    persistTravelerSession();
+  } else {
+    clearTravelerSession();
+  }
 }
 
 function travelerLinkErrorMessage(error) {
@@ -5572,6 +5634,9 @@ document.addEventListener("click", (event) => {
     saveState();
     render();
     if (isViewChange) resetViewScrollPosition();
+    if (nextView === "expenses" && travelerLinkStatus === "registered") {
+      loadAccounts();
+    }
     return;
   }
 
@@ -5617,6 +5682,10 @@ document.addEventListener("click", (event) => {
     "reset-data": () => {
       if (!window.confirm("確定要清除這台裝置的記帳與設定嗎？旅行散策資料不會受影響。")) return;
       state = clone(DEFAULT_STATE);
+      clearTravelerSession();
+      currentTraveler = null;
+      travelerDirectory = [];
+      travelerLinkStatus = "idle";
       saveState();
       closeModal();
       render();
@@ -5783,11 +5852,12 @@ render();
 loadItinerary();
 loadReferenceFilms();
 loadHotBrands();
-if (
-  state.view === "expenses" &&
-  isTravelerLoginReturn()
-) {
-  initializeTravelerLink({ force: true });
+if (state.view === "expenses") {
+  if (travelerLinkStatus === "registered") {
+    loadAccounts();
+  } else if (isTravelerLoginReturn()) {
+    initializeTravelerLink({ force: true });
+  }
 }
 refreshRate(false);
 refreshWeather();
