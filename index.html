@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Build: 2026-07-31-keihan-person-settlement-v38 -->
+<!-- Build: 2026-07-31-keihan-line-token-refresh-v39 -->
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
@@ -3687,7 +3687,7 @@ let dayCoverTimer;
 let toastTimer;
 let modalPageScrollY = 0;
 let itineraryDaySummariesByDate = new Map();
-const BUILD_VERSION = "2026-07-31-keihan-person-settlement-v38";
+const BUILD_VERSION = "2026-07-31-keihan-line-token-refresh-v39";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -4364,13 +4364,19 @@ function applyTravelerLinkResult(result) {
   }
 }
 
+function resetTravelerIdentityState() {
+  currentTraveler = null;
+  travelerDirectory = [];
+  clearTravelerSession();
+}
+
 function travelerLinkErrorMessage(error) {
   const code = String(error?.message || error || "");
   const messages = {
     LIFF_SDK_LOAD_FAILED: "目前無法載入 LINE 登入元件，請確認網路後再試一次。",
     LINE_ID_TOKEN_UNAVAILABLE:
       "LINE Login 尚未開放 openid 權限，請到 LINE Developers 檢查 LIFF Scope。",
-    LINE_TOKEN_INVALID: "LINE 登入已失效，請重新開啟頁面再試一次。",
+    LINE_TOKEN_INVALID: "LINE 登入憑證已過期，請點下方按鈕重新登入 LINE。",
     LINE_USER_ID_MISSING: "目前無法取得 LINE 帳號識別碼。",
     SUPABASE_SERVER_CONFIG_MISSING: "Edge Function 尚未完成 Supabase 伺服器設定。"
   };
@@ -4453,6 +4459,55 @@ async function initializeTravelerLink({ force = false, allowLogin = false } = {}
       }
     } catch (error) {
       console.error("LINE traveler link failed", error);
+      clearTravelerLoginReturn();
+      travelerLinkStatus = "error";
+      travelerLinkError = travelerLinkErrorMessage(error);
+      if (state.view === "expenses") render();
+    } finally {
+      travelerLinkPromise = undefined;
+    }
+  })();
+
+  return travelerLinkPromise;
+}
+
+async function restartTravelerLineLogin() {
+  if (travelerLinkPromise) return travelerLinkPromise;
+
+  travelerLinkStatus = "loading";
+  travelerLinkError = "";
+  resetTravelerIdentityState();
+  if (state.view === "expenses") render();
+
+  travelerLinkPromise = (async () => {
+    try {
+      const liff = await ensureLiffSdk();
+      if (!liff) throw new Error("LIFF_SDK_LOAD_FAILED");
+      await liff.init({ liffId: LINE_TRAVELER.liffId });
+
+      const redirectUri = travelerLoginRedirectUri();
+      clearTravelerLoginReturn();
+      sessionStorage.setItem(TRAVELER_LINK_RETURN_KEY, "1");
+
+      if (liff.isInClient?.()) {
+        /*
+         * LIFF browser 不能呼叫 liff.login()。重新載入 Endpoint 後，
+         * liff.init() 會重新取得可用的 LINE 登入狀態。
+         */
+        window.location.replace(redirectUri);
+        return;
+      }
+
+      /*
+       * 外部瀏覽器的 liff.isLoggedIn() 可能在 ID Token 已過期後仍為 true。
+       * 先 logout 再 login，避免「重新聯動」重複送出同一枚失效 token。
+       */
+      if (liff.isLoggedIn()) liff.logout();
+      travelerLinkStatus = "login";
+      if (state.view === "expenses") render();
+      liff.login({ redirectUri });
+    } catch (error) {
+      console.error("LINE traveler relogin failed", error);
       clearTravelerLoginReturn();
       travelerLinkStatus = "error";
       travelerLinkError = travelerLinkErrorMessage(error);
@@ -5733,8 +5788,7 @@ document.addEventListener("click", (event) => {
     "refresh-weather-location": () => refreshWeather(true),
     "close-modal": closeModal,
     "open-traveler-registration": openTravelerRegistration,
-    "retry-traveler-link": () =>
-      initializeTravelerLink({ force: true, allowLogin: true }),
+    "retry-traveler-link": restartTravelerLineLogin,
     "toggle-flight": () => {
       state.flightIndex = state.flightIndex === 0 ? 1 : 0;
       saveState();
@@ -5801,7 +5855,8 @@ document.addEventListener("submit", async (event) => {
         TRIP_CODE_INVALID: "旅行代號不正確，請重新確認。",
         TRAVELER_CAPACITY_FULL: "本次旅行的 10 個帳本席位已全數登記。",
         TRAVELER_NAME_INVALID: "請輸入 1 至 40 個字的姓名。",
-        LINE_ID_TOKEN_UNAVAILABLE: "目前無法取得 LINE 登入憑證，請重新開啟頁面。"
+        LINE_ID_TOKEN_UNAVAILABLE: "目前無法取得 LINE 登入憑證，請重新聯動。",
+        LINE_TOKEN_INVALID: "LINE 登入憑證已過期，請關閉彈窗後重新聯動。"
       };
       showToast(messages[code] || "登記失敗，請稍後再試一次");
       if (submitButton) {
