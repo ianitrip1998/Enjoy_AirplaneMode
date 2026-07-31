@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Build: 2026-07-30-keihan-ios-date-theme-v34 -->
+<!-- Build: 2026-07-31-keihan-line-traveler-v35 -->
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
@@ -2404,6 +2404,81 @@ img {
   accent-color: var(--gold);
 }
 
+.traveler-grid.named-travelers {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.traveler-grid.named-travelers .traveler-option {
+  min-width: 0;
+  justify-content: flex-start;
+  padding: 10px;
+}
+
+.traveler-option-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.traveler-option-copy strong,
+.traveler-option-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.traveler-option-copy strong {
+  color: var(--ink);
+  font-size: 11px;
+}
+
+.traveler-option-copy small {
+  color: var(--ink-soft);
+  font-size: 8px;
+  font-weight: 650;
+}
+
+.traveler-link-card > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.traveler-link-action {
+  display: inline-flex;
+  min-height: 35px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--gold);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--gold-deep);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.traveler-registration-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 16px;
+  padding: 13px;
+  border: 1px solid rgba(197, 160, 101, 0.35);
+  border-radius: 15px;
+  background: var(--gold-soft);
+  color: var(--ink-soft);
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.traveler-registration-note .ui-icon {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  color: var(--gold-deep);
+}
+
 @media (max-width: 699px) {
   .form-stack input,
   .form-stack select,
@@ -3160,8 +3235,14 @@ const SUPABASE_ITINERARY = {
   referencesTable: "References_film",
   hotBrandTable: "Hot_brand",
   accountsTable: "Accounts_JP202611",
+  travelerFunction: "traveler-register",
   imageBucket: "kyoto202611-itinerary",
   hotBrandImageBucket: "hot-brand"
+};
+
+const LINE_TRAVELER = {
+  liffId: "2010914364-7gc4LrWK",
+  channelId: "2010914364"
 };
 
 const ICONS = {
@@ -3399,13 +3480,19 @@ let hotBrandsError = "";
 let accountsStatus = "loading";
 let accountsError = "";
 let accountsSaving = false;
+let travelerLinkStatus = "idle";
+let travelerLinkError = "";
+let travelerDirectory = [];
+let currentTraveler = null;
+let travelerLinkPromise;
+let liffSdkPromise;
 let referenceEmbedObserver;
 let instagramEmbedScriptPromise;
 let dayCoverTimer;
 let toastTimer;
 let modalPageScrollY = 0;
 let itineraryDaySummariesByDate = new Map();
-const BUILD_VERSION = "2026-07-30-keihan-ios-date-theme-v34";
+const BUILD_VERSION = "2026-07-31-keihan-line-traveler-v35";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -3987,6 +4074,187 @@ async function insertAccountExpense(payload) {
   }
 }
 
+function travelerNumberFromBinding(binding) {
+  const match = String(binding || "").match(/^traveler_([1-9]|10)$/);
+  return match ? Number(match[1]) : null;
+}
+
+function registeredTravelerSlots() {
+  return travelerDirectory
+    .map((entry) => ({
+      number: travelerNumberFromBinding(entry.binding),
+      name: String(entry.traveler || "").trim()
+    }))
+    .filter((entry) => entry.number && entry.name)
+    .sort((a, b) => a.number - b.number);
+}
+
+function travelerNameForNumber(number) {
+  const normalizedNumber = Number(number);
+  const matched = registeredTravelerSlots().find(
+    (entry) => entry.number === normalizedNumber
+  );
+  return matched?.name || `旅客 ${normalizedNumber}`;
+}
+
+function ensureLiffSdk() {
+  if (window.liff) return Promise.resolve(window.liff);
+  if (liffSdkPromise) return liffSdkPromise;
+
+  liffSdkPromise = new Promise((resolve, reject) => {
+    const existing = document.getElementById("line-liff-sdk");
+    if (existing) {
+      existing.addEventListener("load", () => resolve(window.liff), { once: true });
+      existing.addEventListener(
+        "error",
+        () => reject(new Error("LIFF_SDK_LOAD_FAILED")),
+        { once: true }
+      );
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.id = "line-liff-sdk";
+    script.src = "https://static.line-scdn.net/liff/edge/2/sdk.js";
+    script.async = true;
+    script.onload = () => resolve(window.liff);
+    script.onerror = () => reject(new Error("LIFF_SDK_LOAD_FAILED"));
+    document.head.appendChild(script);
+  }).catch((error) => {
+    liffSdkPromise = undefined;
+    throw error;
+  });
+
+  return liffSdkPromise;
+}
+
+async function callTravelerFunction(action, payload = {}) {
+  const idToken = window.liff?.getIDToken?.();
+  if (!idToken) throw new Error("LINE_ID_TOKEN_UNAVAILABLE");
+
+  const endpoint = new URL(
+    `/functions/v1/${SUPABASE_ITINERARY.travelerFunction}`,
+    `${SUPABASE_ITINERARY.url}/`
+  );
+  const response = await fetch(endpoint, {
+    method: "POST",
+    cache: "no-store",
+    headers: {
+      apikey: SUPABASE_ITINERARY.apiKey,
+      Authorization: `Bearer ${SUPABASE_ITINERARY.apiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      action,
+      id_token: idToken,
+      ...payload
+    })
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(String(result.error || `TRAVELER_FUNCTION_${response.status}`));
+  }
+  return result;
+}
+
+function applyTravelerLinkResult(result) {
+  currentTraveler = result?.registered ? result.currentTraveler : null;
+  travelerDirectory = Array.isArray(result?.directory) ? result.directory : [];
+  travelerLinkStatus = currentTraveler ? "registered" : "unregistered";
+  travelerLinkError = "";
+}
+
+function travelerLinkErrorMessage(error) {
+  const code = String(error?.message || error || "");
+  const messages = {
+    LIFF_SDK_LOAD_FAILED: "目前無法載入 LINE 登入元件，請確認網路後再試一次。",
+    LINE_ID_TOKEN_UNAVAILABLE:
+      "LINE Login 尚未開放 openid 權限，請到 LINE Developers 檢查 LIFF Scope。",
+    LINE_TOKEN_INVALID: "LINE 登入已失效，請重新開啟頁面再試一次。",
+    LINE_USER_ID_MISSING: "目前無法取得 LINE 帳號識別碼。",
+    SUPABASE_SERVER_CONFIG_MISSING: "Edge Function 尚未完成 Supabase 伺服器設定。"
+  };
+  return messages[code] || "目前無法聯動 LINE 帳號，請稍後再試一次。";
+}
+
+function openTravelerRegistration() {
+  if (currentTraveler) {
+    showToast(`已登記為 ${currentTraveler.traveler}`);
+    return;
+  }
+  if (travelerLinkStatus !== "unregistered") {
+    initializeTravelerLink({ force: true });
+    return;
+  }
+  if (document.getElementById("travelerRegistrationForm")) return;
+
+  openModal(
+    `
+      <header class="modal-header">
+        <span class="section-kicker">TRAVEL REGISTRATION</span>
+        <h2>旅行登記</h2>
+        <p>第一次使用旅行帳本，請先完成同行者身分登記。</p>
+      </header>
+      <div class="traveler-registration-note">
+        ${icon("info")}
+        <span>系統會依登記順序自動分配 traveler_1 至 traveler_10；旅行代號只用於本次驗證，不會寫入資料庫。</span>
+      </div>
+      <form id="travelerRegistrationForm" class="form-stack">
+        <label>
+          <span>姓名</span>
+          <input name="travelerName" autocomplete="name" maxlength="40" placeholder="輸入同行者姓名" required />
+        </label>
+        <label>
+          <span>旅行代號</span>
+          <input name="tripCode" type="password" autocomplete="off" autocapitalize="characters" placeholder="輸入旅行代號" required />
+        </label>
+        <button type="submit" class="primary-action">${icon("check")} 完成登記</button>
+      </form>
+    `,
+    { label: "旅行登記", className: "traveler-registration-sheet" }
+  );
+}
+
+async function initializeTravelerLink({ force = false } = {}) {
+  if (travelerLinkPromise) return travelerLinkPromise;
+  if (!force && travelerLinkStatus === "registered") return;
+
+  travelerLinkStatus = "loading";
+  travelerLinkError = "";
+  if (state.view === "expenses") render();
+
+  travelerLinkPromise = (async () => {
+    try {
+      const liff = await ensureLiffSdk();
+      if (!liff) throw new Error("LIFF_SDK_LOAD_FAILED");
+      await liff.init({ liffId: LINE_TRAVELER.liffId });
+
+      if (!liff.isLoggedIn()) {
+        travelerLinkStatus = "login";
+        if (state.view === "expenses") render();
+        liff.login({ redirectUri: window.location.href });
+        return;
+      }
+
+      const result = await callTravelerFunction("lookup");
+      applyTravelerLinkResult(result);
+      if (state.view === "expenses") render();
+      if (!currentTraveler && state.view === "expenses") {
+        window.setTimeout(openTravelerRegistration, 80);
+      }
+    } catch (error) {
+      console.error("LINE traveler link failed", error);
+      travelerLinkStatus = "error";
+      travelerLinkError = travelerLinkErrorMessage(error);
+      if (state.view === "expenses") render();
+    } finally {
+      travelerLinkPromise = undefined;
+    }
+  })();
+
+  return travelerLinkPromise;
+}
+
 function ensureInstagramEmbedScript() {
   if (window.instgrm?.Embeds) return Promise.resolve(true);
   if (instagramEmbedScriptPromise) return instagramEmbedScriptPromise;
@@ -4566,7 +4834,9 @@ function expenseTotals() {
 function accountTravelerLabel(value) {
   const normalized = String(value || "").trim();
   if (!normalized) return "未填寫";
-  return /^\d+$/.test(normalized) ? `旅客 ${normalized}` : normalized;
+  return /^\d+$/.test(normalized)
+    ? travelerNameForNumber(Number(normalized))
+    : normalized;
 }
 
 function renderExpenses() {
@@ -4578,12 +4848,41 @@ function renderExpenses() {
   };
   const showStatus = ["loading", "config", "error"].includes(accountsStatus);
   const [statusTitle, statusMessage] = statusMessages[accountsStatus] || [];
+  const travelerStatusMessages = {
+    idle: ["正在準備 LINE 聯動", "即將確認目前使用的 LINE 帳號。"],
+    loading: ["正在聯動 LINE 帳號", "正在讀取這個帳號的旅行者登記。"],
+    login: ["正在開啟 LINE 登入", "完成 LINE 登入後會自動回到旅行帳本。"],
+    unregistered: ["尚未完成旅行登記", "輸入姓名與旅行代號後即可參與記帳。"],
+    error: ["LINE 帳號聯動失敗", travelerLinkError]
+  };
+  const showTravelerStatus = travelerLinkStatus !== "registered";
+  const [travelerStatusTitle, travelerStatusMessage] =
+    travelerStatusMessages[travelerLinkStatus] || travelerStatusMessages.idle;
 
   return `
     <section class="page-header">
       <span class="section-kicker">EXPENSE TRACKER</span>
       <h1>旅行記帳</h1>
     </section>
+
+    ${
+      showTravelerStatus
+        ? `<article class="supabase-status-card traveler-link-card">
+            ${icon(travelerLinkStatus === "loading" ? "cloud" : "info")}
+            <div>
+              <strong>${escapeHtml(travelerStatusTitle)}</strong>
+              <span>${escapeHtml(travelerStatusMessage)}</span>
+              ${
+                travelerLinkStatus === "unregistered"
+                  ? `<button class="traveler-link-action" data-action="open-traveler-registration">完成旅行登記</button>`
+                  : travelerLinkStatus === "error"
+                    ? `<button class="traveler-link-action" data-action="retry-traveler-link">重新聯動</button>`
+                    : ""
+              }
+            </div>
+          </article>`
+        : ""
+    }
 
     <section class="expense-summary accounts-summary">
       <article>
@@ -4625,7 +4924,7 @@ function renderExpenses() {
                       <small class="expense-participants">${
                         expense.travelerShares.length
                           ? `分攤旅客：${expense.travelerShares
-                              .map((share) => share.number)
+                              .map((share) => travelerNameForNumber(share.number))
                             .join("、")} · 每人 ${formatTwd(
                               expense.travelerShares[0].amount
                             )}`
@@ -4645,7 +4944,11 @@ function renderExpenses() {
       }
     </section>
 
-    <button class="floating-add" data-action="add-expense">${icon("plus")} 新增記帳</button>
+    <button class="floating-add" data-action="${
+      currentTraveler ? "add-expense" : "open-traveler-registration"
+    }">${icon(currentTraveler ? "plus" : "info")} ${
+      currentTraveler ? "新增記帳" : "完成旅行登記"
+    }</button>
   `;
 }
 
@@ -4818,6 +5121,23 @@ function updateExpenseConversionPreview() {
 }
 
 function openExpenseForm() {
+  if (!currentTraveler) {
+    if (travelerLinkStatus === "unregistered") {
+      openTravelerRegistration();
+    } else {
+      initializeTravelerLink({ force: true });
+    }
+    return;
+  }
+
+  const travelerSlots = registeredTravelerSlots();
+  const currentTravelerNumber = travelerNumberFromBinding(currentTraveler.binding);
+  if (!travelerSlots.length) {
+    showToast("目前讀不到同行者名單，請重新聯動 LINE 帳號");
+    initializeTravelerLink({ force: true });
+    return;
+  }
+
   openModal(
     `
       <header class="modal-header">
@@ -4841,8 +5161,13 @@ function openExpenseForm() {
           <label>
             <span>付款人</span>
             <select name="payer" required>
-              ${Array.from({ length: 10 }, (_, index) => index + 1)
-                .map((number) => `<option value="${number}">旅客 ${number}</option>`)
+              ${travelerSlots
+                .map(
+                  (entry) =>
+                    `<option value="${entry.number}" ${
+                      entry.number === currentTravelerNumber ? "selected" : ""
+                    }>${escapeHtml(entry.name)}</option>`
+                )
                 .join("")}
             </select>
           </label>
@@ -4859,13 +5184,16 @@ function openExpenseForm() {
         </label>
         <fieldset class="traveler-selector">
           <span>旅客分攤（可複選）</span>
-          <div class="traveler-grid">
-            ${Array.from({ length: 10 }, (_, index) => index + 1)
+          <div class="traveler-grid named-travelers">
+            ${travelerSlots
               .map(
-                (number) => `
+                (entry) => `
                   <label class="traveler-option">
-                    <input type="checkbox" name="traveler_${number}" />
-                    <span>${number}</span>
+                    <input type="checkbox" name="traveler_${entry.number}" />
+                    <span class="traveler-option-copy">
+                      <strong>${escapeHtml(entry.name)}</strong>
+                      <small>旅客 ${entry.number}</small>
+                    </span>
                   </label>`
               )
               .join("")}
@@ -5141,6 +5469,7 @@ document.addEventListener("click", (event) => {
     saveState();
     render();
     if (isViewChange) resetViewScrollPosition();
+    if (nextView === "expenses") initializeTravelerLink();
     return;
   }
 
@@ -5169,6 +5498,8 @@ document.addEventListener("click", (event) => {
     "open-currency-converter": openCurrencyConverter,
     "refresh-weather-location": () => refreshWeather(true),
     "close-modal": closeModal,
+    "open-traveler-registration": openTravelerRegistration,
+    "retry-traveler-link": () => initializeTravelerLink({ force: true }),
     "toggle-flight": () => {
       state.flightIndex = state.flightIndex === 0 ? 1 : 0;
       saveState();
@@ -5197,6 +5528,51 @@ document.addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = event.target;
   const data = new FormData(form);
+
+  if (form.id === "travelerRegistrationForm") {
+    const travelerName = String(data.get("travelerName") || "").trim();
+    const tripCode = String(data.get("tripCode") || "").trim();
+    const submitButton = form.querySelector('button[type="submit"]');
+    if (!travelerName || !tripCode) {
+      showToast("請填寫姓名與旅行代號");
+      return;
+    }
+
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.textContent = "正在確認 LINE 身分…";
+    }
+
+    try {
+      const result = await callTravelerFunction("register", {
+        traveler: travelerName,
+        trip_code: tripCode
+      });
+      applyTravelerLinkResult(result);
+      closeModal();
+      render();
+      await loadAccounts();
+      showToast(
+        `${currentTraveler.traveler} 已綁定 ${currentTraveler.binding}`
+      );
+    } catch (error) {
+      console.error("Traveler registration failed", error);
+      const code = String(error?.message || "");
+      const messages = {
+        TRIP_CODE_INVALID: "旅行代號不正確，請重新確認。",
+        TRAVELER_CAPACITY_FULL: "本次旅行的 10 個帳本席位已全數登記。",
+        TRAVELER_NAME_INVALID: "請輸入 1 至 40 個字的姓名。",
+        LINE_ID_TOKEN_UNAVAILABLE: "目前無法取得 LINE 登入憑證，請重新開啟頁面。"
+      };
+      showToast(messages[code] || "登記失敗，請稍後再試一次");
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.innerHTML = `${icon("check")} 完成登記`;
+        hydrateIcons(submitButton);
+      }
+    }
+    return;
+  }
 
   if (form.id === "expenseForm") {
     if (accountsSaving) return;
@@ -5292,7 +5668,10 @@ document.addEventListener("visibilitychange", () => {
   if (!document.hidden) {
     refreshRate(false);
     refreshWeather(false);
-    if (state.view === "expenses") loadAccounts();
+    if (state.view === "expenses") {
+      loadAccounts();
+      initializeTravelerLink({ force: true });
+    }
   }
 });
 
@@ -5303,6 +5682,7 @@ loadItinerary();
 loadReferenceFilms();
 loadHotBrands();
 loadAccounts();
+if (state.view === "expenses") initializeTravelerLink();
 refreshRate(false);
 refreshWeather();
 window.setInterval(() => refreshRate(false), 5 * 60 * 1000);
