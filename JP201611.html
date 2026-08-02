@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Build: 2026-07-31-keihan-tour-includes-drawer-v41 -->
+<!-- Build: 2026-08-02-keihan-subtle-tour-button-v42 -->
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
@@ -2026,30 +2026,35 @@ img {
 
 .tour-includes-toggle {
   position: absolute;
-  top: 50%;
-  right: -46px;
+  top: calc(50% - min(500px, 30vh));
+  right: -30px;
   display: grid;
-  width: 46px;
-  height: 78px;
+  width: 30px;
+  height: 48px;
   padding: 0;
   place-items: center;
   transform: translateY(-50%);
-  border: 1px solid rgba(224, 190, 130, 0.44);
+  border: 1px solid rgba(255, 255, 255, 0.055);
   border-left: 0;
-  border-radius: 0 20px 20px 0;
-  background: rgba(197, 160, 101, 0.32);
-  color: #f3dcae;
-  box-shadow: 12px 0 30px rgba(0, 0, 0, 0.26);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  border-radius: 0 14px 14px 0;
+  background: rgba(255, 255, 255, 0.025);
+  color: rgba(255, 255, 255, 0.12);
+  box-shadow: none;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   touch-action: manipulation;
 }
 
 .tour-includes-toggle .ui-icon {
-  width: 23px;
-  height: 23px;
-  font-size: 23px;
+  width: 15px;
+  height: 15px;
+  font-size: 15px;
   transition: transform 300ms ease;
+}
+
+.tour-includes-toggle:active {
+  background: rgba(255, 255, 255, 0.055);
+  color: rgba(255, 255, 255, 0.2);
 }
 
 .tour-includes-drawer.open .tour-includes-toggle .ui-icon {
@@ -2057,7 +2062,7 @@ img {
 }
 
 .tour-includes-toggle:focus-visible {
-  outline: 2px solid var(--gold-deep);
+  outline: 2px solid rgba(255, 255, 255, 0.28);
   outline-offset: 3px;
 }
 
@@ -3871,7 +3876,7 @@ let dayCoverTimer;
 let toastTimer;
 let modalPageScrollY = 0;
 let itineraryDaySummariesByDate = new Map();
-const BUILD_VERSION = "2026-07-31-keihan-tour-includes-drawer-v41";
+const BUILD_VERSION = "2026-08-02-keihan-subtle-tour-button-v42";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
