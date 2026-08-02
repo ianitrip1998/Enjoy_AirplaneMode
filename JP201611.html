@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Build: 2026-08-02-keihan-subtle-tour-button-v42 -->
+<!-- Build: 2026-08-02-keihan-7day-traveler-session-v43 -->
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
@@ -3539,6 +3539,7 @@ const LINE_TRAVELER = {
 };
 const TRAVELER_LINK_RETURN_KEY = "jp202611-line-login-pending";
 const TRAVELER_SESSION_KEY = "jp202611-traveler-session-v1";
+const TRAVELER_SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 
 function isTravelerLoginReturn() {
   const query = new URLSearchParams(window.location.search);
@@ -3580,21 +3581,52 @@ function normalizeTravelerSessionEntry(entry) {
 
 function loadTravelerSession() {
   try {
-    const saved = JSON.parse(sessionStorage.getItem(TRAVELER_SESSION_KEY));
+    const persistentRaw = localStorage.getItem(TRAVELER_SESSION_KEY);
+    const legacySessionRaw = sessionStorage.getItem(TRAVELER_SESSION_KEY);
+    const saved = JSON.parse(persistentRaw || legacySessionRaw || "null");
+    if (!saved) return null;
+
+    const now = Date.now();
+    const expiresAt = Number(saved?.expiresAt);
+    const isLegacySession = !persistentRaw && Boolean(legacySessionRaw);
+    if (!isLegacySession && (!Number.isFinite(expiresAt) || expiresAt <= now)) {
+      clearTravelerSession();
+      return null;
+    }
+
     const savedCurrentTraveler = normalizeTravelerSessionEntry(
       saved?.currentTraveler
     );
-    if (!savedCurrentTraveler) return null;
+    if (!savedCurrentTraveler) {
+      clearTravelerSession();
+      return null;
+    }
 
     const savedDirectory = Array.isArray(saved?.directory)
       ? saved.directory.map(normalizeTravelerSessionEntry).filter(Boolean)
       : [];
 
-    return {
+    const restoredSession = {
       currentTraveler: savedCurrentTraveler,
       directory: savedDirectory
     };
+
+    // 將舊版只存在分頁期間的登入狀態移轉為 7 天本機憑證。
+    if (isLegacySession) {
+      localStorage.setItem(
+        TRAVELER_SESSION_KEY,
+        JSON.stringify({
+          ...restoredSession,
+          issuedAt: now,
+          expiresAt: now + TRAVELER_SESSION_DURATION_MS
+        })
+      );
+      sessionStorage.removeItem(TRAVELER_SESSION_KEY);
+    }
+
+    return restoredSession;
   } catch {
+    clearTravelerSession();
     return null;
   }
 }
@@ -3602,17 +3634,21 @@ function loadTravelerSession() {
 function persistTravelerSession() {
   try {
     if (!currentTraveler) {
-      sessionStorage.removeItem(TRAVELER_SESSION_KEY);
+      clearTravelerSession();
       return;
     }
 
-    sessionStorage.setItem(
+    const issuedAt = Date.now();
+    localStorage.setItem(
       TRAVELER_SESSION_KEY,
       JSON.stringify({
         currentTraveler,
-        directory: travelerDirectory
+        directory: travelerDirectory,
+        issuedAt,
+        expiresAt: issuedAt + TRAVELER_SESSION_DURATION_MS
       })
     );
+    sessionStorage.removeItem(TRAVELER_SESSION_KEY);
   } catch (error) {
     console.warn("Unable to persist traveler session", error);
   }
@@ -3620,6 +3656,7 @@ function persistTravelerSession() {
 
 function clearTravelerSession() {
   try {
+    localStorage.removeItem(TRAVELER_SESSION_KEY);
     sessionStorage.removeItem(TRAVELER_SESSION_KEY);
   } catch (error) {
     console.warn("Unable to clear traveler session", error);
@@ -3876,7 +3913,7 @@ let dayCoverTimer;
 let toastTimer;
 let modalPageScrollY = 0;
 let itineraryDaySummariesByDate = new Map();
-const BUILD_VERSION = "2026-08-02-keihan-subtle-tour-button-v42";
+const BUILD_VERSION = "2026-08-02-keihan-7day-traveler-session-v43";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
