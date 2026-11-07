@@ -1,5 +1,18 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
 <!doctype html>
-<!-- Build: 2026-08-02-keihan-7day-traveler-session-v43 -->
+<!-- Build: 2026-11-08-keihan-traveler-directory-refresh-v44 -->
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
@@ -3906,6 +3919,7 @@ let travelerLinkError = "";
 let travelerDirectory = savedTravelerSession?.directory || [];
 let currentTraveler = savedTravelerSession?.currentTraveler || null;
 let travelerLinkPromise;
+let travelerDirectoryRefreshPromise;
 let liffSdkPromise;
 let referenceEmbedObserver;
 let instagramEmbedScriptPromise;
@@ -3913,7 +3927,7 @@ let dayCoverTimer;
 let toastTimer;
 let modalPageScrollY = 0;
 let itineraryDaySummariesByDate = new Map();
-const BUILD_VERSION = "2026-08-02-keihan-7day-traveler-session-v43";
+const BUILD_VERSION = "2026-11-08-keihan-traveler-directory-refresh-v44";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -4588,6 +4602,72 @@ function applyTravelerLinkResult(result) {
   } else {
     clearTravelerSession();
   }
+}
+
+/*
+ * 登入身分仍沿用原本的 7 天本機憑證，但旅客名單屬於會變動的共享資料，
+ * 因此進入旅行記帳時在背景重新同步。同步失敗時保留既有快取，避免影響
+ * 原本可用的記帳與結算功能。
+ */
+async function refreshTravelerDirectorySilently() {
+  if (travelerDirectoryRefreshPromise) return travelerDirectoryRefreshPromise;
+  if (!currentTraveler || travelerLinkStatus !== "registered") return;
+
+  travelerDirectoryRefreshPromise = (async () => {
+    try {
+      const liff = await ensureLiffSdk();
+      if (!liff) return;
+      await liff.init({ liffId: LINE_TRAVELER.liffId });
+
+      // 沒有可用的 LINE 登入狀態時維持現有快取，不主動中斷使用流程。
+      if (!liff.isLoggedIn()) return;
+
+      const result = await callTravelerFunction("lookup");
+      const nextCurrentTraveler = normalizeTravelerSessionEntry(
+        result?.currentTraveler
+      );
+      const nextDirectory = Array.isArray(result?.directory)
+        ? result.directory.map(normalizeTravelerSessionEntry).filter(Boolean)
+        : [];
+
+      // 只有完整且有效的回應才覆寫快取，避免暫時性異常清空旅客名單。
+      if (
+        !result?.registered ||
+        !nextCurrentTraveler ||
+        !nextDirectory.some(
+          (entry) => entry.binding === nextCurrentTraveler.binding
+        )
+      ) {
+        return;
+      }
+
+      const previousSnapshot = JSON.stringify({
+        currentTraveler,
+        directory: travelerDirectory
+      });
+
+      applyTravelerLinkResult({
+        registered: true,
+        currentTraveler: nextCurrentTraveler,
+        directory: nextDirectory
+      });
+
+      const nextSnapshot = JSON.stringify({
+        currentTraveler,
+        directory: travelerDirectory
+      });
+
+      if (previousSnapshot !== nextSnapshot && state.view === "expenses") {
+        render();
+      }
+    } catch (error) {
+      console.warn("Unable to refresh traveler directory", error);
+    } finally {
+      travelerDirectoryRefreshPromise = undefined;
+    }
+  })();
+
+  return travelerDirectoryRefreshPromise;
 }
 
 function resetTravelerIdentityState() {
@@ -6048,6 +6128,7 @@ document.addEventListener("click", (event) => {
     if (isViewChange) resetViewScrollPosition();
     if (nextView === "expenses" && travelerLinkStatus === "registered") {
       loadAccounts();
+      refreshTravelerDirectorySilently();
     }
     return;
   }
@@ -6255,6 +6336,7 @@ document.addEventListener("visibilitychange", () => {
     refreshWeather(false);
     if (state.view === "expenses" && travelerLinkStatus === "registered") {
       loadAccounts();
+      refreshTravelerDirectorySilently();
     }
   }
 });
@@ -6268,6 +6350,7 @@ loadHotBrands();
 if (state.view === "expenses") {
   if (travelerLinkStatus === "registered") {
     loadAccounts();
+    refreshTravelerDirectorySilently();
   } else if (isTravelerLoginReturn()) {
     initializeTravelerLink({ force: true });
   }
